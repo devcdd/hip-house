@@ -1,0 +1,175 @@
+// Spotify hip-hop album crawler for hiphouse (힙집).
+// Roster-driven: you curate artist IDs in artists.txt; this pulls each artist's albums by ID
+// into a local Postgres DB (see docker-compose.yml). Spotify has no album-level genre, so a
+// hand-picked roster IS the genre filter. Node native fetch; pg for Postgres.
+//
+// Auth: Client Credentials (keys in .env, see .env.example).
+// Run:  docker compose up -d db  &&  node --env-file-if-exists=.env src/index.js
+
+import pg from "pg";
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+
+const TOKEN_URL = "https://accounts.spotify.com/api/token";
+const API = "https://api.spotify.com/v1";
+const MARKET = process.env.MARKET ?? "KR";
+const GROUPS = "album,single"; // ponytail: EPs land here as single/album — album_type stored, filter in UI
+const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://hiphouse:hiphouse@localhost:5432/hiphouse";
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ---- pure helpers (self-checked in test.js) ----
+export function parseArtistId(line) {
+  const s = line.split("#")[0].trim();
+  if (!s) return null;
+  const m = s.match(/artist[:/]([0-9A-Za-z]{22})/) ?? s.match(/^([0-9A-Za-z]{22})$/);
+  return m ? m[1] : null;
+}
+
+export const yearOf = (releaseDate) => {
+  const y = parseInt((releaseDate ?? "").slice(0, 4), 10);
+  return Number.isInteger(y) ? y : null;
+};
+
+export function toAlbumRow(album, rosterArtistId) {
+  return {
+    id: album.id,
+    name: album.name,
+    artist_id: rosterArtistId,
+    artist_name: (album.artists ?? []).map((a) => a.name).join(", "),
+    release_date: album.release_date ?? null,
+    year: yearOf(album.release_date),
+    album_type: album.album_type ?? null,
+    total_tracks: album.total_tracks ?? null,
+    image_url: album.images?.[0]?.url ?? null,
+    spotify_url: album.external_urls?.spotify ?? null,
+  };
+}
+
+// ---- Spotify ----
+export async function getToken() {
+  const id = process.env.SPOTIFY_CLIENT_ID;
+  const secret = process.env.SPOTIFY_CLIENT_SECRET;
+  if (!id || !secret) {
+    console.error("Missing SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET.");
+    console.error("Create a free app at https://developer.spotify.com/dashboard, copy .env.example to .env, fill it in.");
+    process.exit(1);
+  }
+  const res = await fetch(TOKEN_URL, {
+    method: "POST",
+    headers: {
+      Authorization: "Basic " + Buffer.from(`${id}:${secret}`).toString("base64"),
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: "grant_type=client_credentials",
+  });
+  if (!res.ok) throw new Error(`token ${res.status}: ${await res.text()}`);
+  return (await res.json()).access_token;
+}
+
+export async function spFetch(url, tokenRef) {
+  let refreshed = false;
+  for (;;) {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${tokenRef.value}` } });
+    if (res.status === 429) {
+      const wait = parseInt(res.headers.get("retry-after") ?? "1", 10) + 1;
+      // Daily quota exhaustion hands back a huge retry-after (~24h). Don't silently freeze —
+      // bail with a clear message. Only auto-wait for short, transient throttling.
+      if (wait > 60) throw new Error(`rate limited: retry-after ${wait}s (quota exhausted?) @ ${url}`);
+      console.error(`  rate limited, waiting ${wait}s...`);
+      await sleep(wait * 1000);
+      continue;
+    }
+    if (res.status === 401 && !refreshed) {
+      tokenRef.value = await getToken();
+      refreshed = true;
+      continue;
+    }
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText} @ ${url}`);
+    return res.json();
+  }
+}
+
+async function fetchArtistNames(ids, tokenRef) {
+  const names = new Map();
+  for (let i = 0; i < ids.length; i += 50) {
+    const data = await spFetch(`${API}/artists?ids=${ids.slice(i, i + 50).join(",")}`, tokenRef);
+    for (const a of data.artists ?? []) if (a) names.set(a.id, a.name);
+  }
+  return names;
+}
+
+export async function fetchArtistAlbums(artistId, tokenRef) {
+  const albums = new Map(); // dedup by album id (Spotify repeats across markets)
+  // Spotify caps this endpoint at limit=10 for Client Credentials apps; `next` pages the rest.
+  let url = `${API}/artists/${artistId}/albums?include_groups=${GROUPS}&market=${MARKET}&limit=10`;
+  while (url) {
+    const data = await spFetch(url, tokenRef);
+    for (const al of data.items ?? []) albums.set(al.id, al);
+    url = data.next; // Spotify hands back the full next-page URL
+  }
+  return [...albums.values()];
+}
+
+export const upsertArtist = (db, id, name) =>
+  db.query("INSERT INTO artists(id,name) VALUES($1,$2) ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name", [id, name]);
+
+export const upsertAlbum = (db, r) =>
+  db.query(
+    `INSERT INTO albums(id,name,artist_id,artist_name,release_date,year,album_type,total_tracks,image_url,spotify_url)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+     ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name, artist_id=EXCLUDED.artist_id, artist_name=EXCLUDED.artist_name,
+       release_date=EXCLUDED.release_date, year=EXCLUDED.year, album_type=EXCLUDED.album_type,
+       total_tracks=EXCLUDED.total_tracks, image_url=EXCLUDED.image_url, spotify_url=EXCLUDED.spotify_url`,
+    [r.id, r.name, r.artist_id, r.artist_name, r.release_date, r.year, r.album_type, r.total_tracks, r.image_url, r.spotify_url]
+  );
+
+export async function openDb() {
+  const db = new pg.Client({ connectionString: DATABASE_URL });
+  await db.connect();
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS artists (id TEXT PRIMARY KEY, name TEXT);
+    CREATE TABLE IF NOT EXISTS albums (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL,
+      artist_id TEXT NOT NULL, artist_name TEXT NOT NULL,
+      release_date TEXT, year INTEGER, album_type TEXT,
+      total_tracks INTEGER, image_url TEXT, spotify_url TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_albums_year ON albums(year);
+    CREATE INDEX IF NOT EXISTS idx_albums_artist ON albums(artist_id);
+  `);
+  return db;
+}
+
+async function main() {
+  const raw = await readFile("artists.txt", "utf8").catch(() => {
+    console.error("artists.txt not found. Add Spotify artist IDs/URLs, one per line.");
+    process.exit(1);
+  });
+  const ids = [...new Set(raw.split("\n").map(parseArtistId).filter(Boolean))];
+  if (!ids.length) {
+    console.error("No artist IDs in artists.txt — curate your hip-hop roster first.");
+    process.exit(1);
+  }
+
+  const tokenRef = { value: await getToken() };
+  const db = await openDb();
+
+  const names = await fetchArtistNames(ids, tokenRef);
+  for (const id of ids) await upsertArtist(db, id, names.get(id) ?? null);
+
+  let total = 0;
+  for (const id of ids) {
+    const albums = await fetchArtistAlbums(id, tokenRef);
+    for (const al of albums) await upsertAlbum(db, toAlbumRow(al, id));
+    total += albums.length;
+    console.log(`  ${names.get(id) ?? id}: ${albums.length} albums`);
+  }
+
+  const byYear = (await db.query("SELECT year, COUNT(*)::int n FROM albums GROUP BY year ORDER BY year DESC")).rows;
+  console.log(`\n${total} album rows / ${ids.length} artists → ${DATABASE_URL}`);
+  console.log("by year:", byYear.map((r) => `${r.year}:${r.n}`).join("  "));
+  await db.end();
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) main();

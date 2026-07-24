@@ -1,0 +1,175 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "hiphouse API",
+    "description": "크롤러가 채운 Postgres(artists/albums) CRUD 서버.",
+    "version": "0.1.0"
+  },
+  "servers": [{ "url": "/" }],
+  "tags": [
+    { "name": "albums" },
+    { "name": "artists" }
+  ],
+  "paths": {
+    "/albums": {
+      "get": {
+        "tags": ["albums"],
+        "summary": "앨범 목록 (연도/아티스트 필터)",
+        "parameters": [
+          { "name": "year", "in": "query", "schema": { "type": "integer" }, "description": "발매 연도로 필터" },
+          { "name": "artist_id", "in": "query", "schema": { "type": "string" }, "description": "아티스트 ID로 필터" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "minimum": 1, "maximum": 200 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "앨범 배열",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Album" } } } }
+          }
+        }
+      },
+      "post": {
+        "tags": ["albums"],
+        "summary": "앨범 생성",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Album" } } }
+        },
+        "responses": {
+          "201": { "description": "생성됨", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Album" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "409": { "description": "id 중복", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/albums/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+      "get": {
+        "tags": ["albums"],
+        "summary": "앨범 단건 조회",
+        "responses": {
+          "200": { "description": "앨범", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Album" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["albums"],
+        "summary": "앨범 수정 (전체 교체)",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Album" } } }
+        },
+        "responses": {
+          "200": { "description": "수정됨", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Album" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["albums"],
+        "summary": "앨범 삭제",
+        "responses": {
+          "204": { "description": "삭제됨" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/artists": {
+      "get": {
+        "tags": ["artists"],
+        "summary": "아티스트 목록",
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "minimum": 1, "maximum": 200 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "아티스트 배열",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Artist" } } } }
+          }
+        }
+      },
+      "post": {
+        "tags": ["artists"],
+        "summary": "아티스트 생성",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Artist" } } }
+        },
+        "responses": {
+          "201": { "description": "생성됨", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Artist" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "409": { "description": "id 중복", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/artists/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+      "get": {
+        "tags": ["artists"],
+        "summary": "아티스트 단건 조회",
+        "responses": {
+          "200": { "description": "아티스트", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Artist" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["artists"],
+        "summary": "아티스트 수정",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Artist" } } }
+        },
+        "responses": {
+          "200": { "description": "수정됨", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Artist" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["artists"],
+        "summary": "아티스트 삭제",
+        "responses": {
+          "204": { "description": "삭제됨" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "BadRequest": { "description": "잘못된 요청", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "NotFound": { "description": "없음", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+    },
+    "schemas": {
+      "Album": {
+        "type": "object",
+        "required": ["id", "name", "artist_id", "artist_name"],
+        "properties": {
+          "id": { "type": "string", "example": "4aawyAB9vmqN3uQ7FjRGTy" },
+          "name": { "type": "string", "example": "Album Name" },
+          "artist_id": { "type": "string", "example": "1uNFoZAHBGtllmzznpCI3s" },
+          "artist_name": { "type": "string", "example": "Artist Name" },
+          "release_date": { "type": "string", "nullable": true, "example": "2024-05-01" },
+          "year": { "type": "integer", "nullable": true, "example": 2024 },
+          "album_type": { "type": "string", "nullable": true, "example": "album" },
+          "total_tracks": { "type": "integer", "nullable": true, "example": 12 },
+          "image_url": { "type": "string", "nullable": true },
+          "spotify_url": { "type": "string", "nullable": true }
+        }
+      },
+      "Artist": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "example": "1uNFoZAHBGtllmzznpCI3s" },
+          "name": { "type": "string", "nullable": true, "example": "Artist Name" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": { "error": { "type": "string" } }
+      }
+    }
+  }
+}

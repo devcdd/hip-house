@@ -1,0 +1,14 @@
+{
+  "name": "@hiphouse/crawler",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "crawl": "node --env-file-if-exists=../../.env src/index.js",
+    "search": "node --env-file-if-exists=../../.env src/search.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  }
+}

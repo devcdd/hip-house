@@ -1,0 +1,30 @@
+import { Link } from 'react-router-dom'
+import { useAuth } from '@/entities/session'
+import { startKakaoLogin } from '@/features/auth/lib/kakao'
+import styles from './AuthControls.module.css'
+
+export function AuthControls() {
+  const { isAuthed, user, signOut } = useAuth()
+
+  if (!isAuthed) {
+    return (
+      <button type="button" className={styles.login} onClick={startKakaoLogin}>
+        카카오 로그인
+      </button>
+    )
+  }
+
+  return (
+    <div className={styles.wrap}>
+      <Link to="/favorites" className={styles.link} title="즐겨찾기">
+        ♥
+      </Link>
+      <span className={styles.name} title={user?.nickname}>
+        {user?.nickname || '사용자'}
+      </span>
+      <button type="button" className={styles.logout} onClick={signOut}>
+        로그아웃
+      </button>
+    </div>
+  )
+}

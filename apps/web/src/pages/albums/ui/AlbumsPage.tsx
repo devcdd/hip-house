@@ -1,0 +1,71 @@
+import { useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { YearFilter, useYears, toYearParam, ALL, type YearOption } from '@/features/filter-albums-by-year'
+import {
+  TypeFilter,
+  SortSelect,
+  toTypeParam,
+  toSortParam,
+  parseTypes,
+  type SortKey,
+} from '@/features/album-filters'
+import { AlbumFeed } from '@/widgets/album-feed'
+import styles from './AlbumsPage.module.css'
+
+// Filter state lives in the URL so it survives navigating to a detail page and back.
+export function AlbumsPage() {
+  const [search, setSearch] = useSearchParams()
+  const years = useYears()
+
+  const yearRaw = search.get('year')
+  const year: YearOption = yearRaw && /^\d+$/.test(yearRaw) ? Number(yearRaw) : ALL
+  const types = parseTypes(search.get('type'))
+  const sortRaw = search.get('sort')
+  const sort: SortKey = sortRaw === 'tracks' || sortRaw === 'popular' ? sortRaw : 'recent'
+
+  // "트랙 많은 순"은 싱글만 선택했을 땐 의미 없음.
+  const singleOnly = types.length === 1 && types[0] === 'single'
+
+  function patch(next: Record<string, string | undefined>) {
+    const p = new URLSearchParams(search)
+    for (const [k, v] of Object.entries(next)) {
+      if (v) p.set(k, v)
+      else p.delete(k)
+    }
+    setSearch(p, { replace: true })
+  }
+
+  const typeParam = toTypeParam(types)
+  const params = useMemo(
+    () => ({ year: toYearParam(year), albumType: typeParam, sort: toSortParam(sort) }),
+    [year, typeParam, sort],
+  )
+
+  return (
+    <div className={styles.page}>
+      <div className={styles.controls}>
+        <YearFilter
+          years={years}
+          value={year}
+          onChange={(y) => patch({ year: y === ALL ? undefined : String(y) })}
+        />
+        <div className={styles.row}>
+          <TypeFilter
+            value={types}
+            onChange={(next) => {
+              // 싱글만 남으면 트랙수 정렬 무의미 → 최신순으로 되돌림.
+              const nextSingleOnly = next.length === 1 && next[0] === 'single'
+              patch({ type: toTypeParam(next), ...(nextSingleOnly && sort === 'tracks' ? { sort: undefined } : {}) })
+            }}
+          />
+          <SortSelect
+            value={sort}
+            onChange={(s) => patch({ sort: toSortParam(s) })}
+            disabledKeys={singleOnly ? ['tracks'] : []}
+          />
+        </div>
+      </div>
+      <AlbumFeed params={params} />
+    </div>
+  )
+}

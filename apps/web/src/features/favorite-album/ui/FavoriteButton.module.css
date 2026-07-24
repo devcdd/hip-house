@@ -1,0 +1,55 @@
+.btn {
+  border: none;
+  cursor: pointer;
+  color: var(--fg);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.on {
+  color: #ff4d6d;
+}
+
+/* overlay: heart chip over album art (favorites grid) */
+.overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  font-size: 1rem;
+  justify-content: center;
+}
+
+.overlay.on {
+  color: #ff4d6d;
+}
+
+.overlay:hover {
+  transform: scale(1.1);
+}
+
+/* inline: labeled pill (detail page) */
+.inline {
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.inline:hover {
+  outline: 2px solid var(--muted);
+  outline-offset: -1px;
+}

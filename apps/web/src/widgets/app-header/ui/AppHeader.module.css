@@ -1,0 +1,35 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 16px 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+}
+
+.logo {
+  height: 22px;
+  width: auto;
+  display: block;
+}
+
+/* Logo is black text on transparent — flip to white in dark mode. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .logo {
+    filter: invert(1);
+  }
+}
+
+:root[data-theme='dark'] .logo {
+  filter: invert(1);
+}

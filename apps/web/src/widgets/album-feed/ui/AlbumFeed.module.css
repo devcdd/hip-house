@@ -1,0 +1,24 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 28px 20px;
+}
+
+.item {
+  position: relative;
+}
+
+/* soft-deleted (admin-only view) */
+.dimmed {
+  opacity: 0.4;
+}
+
+.sentinel {
+  height: 1px;
+}
+
+.state {
+  color: var(--muted);
+  padding: 24px 0;
+  text-align: center;
+}

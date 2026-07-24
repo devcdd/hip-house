@@ -1,0 +1,22 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: hiphouse-db
+    environment:
+      POSTGRES_USER: hiphouse
+      POSTGRES_PASSWORD: hiphouse
+      POSTGRES_DB: hiphouse
+    ports:
+      - "5432:5432"
+    volumes:
+      - hiphouse-pg:/var/lib/postgresql/data
+    healthcheck:
+      # -h 127.0.0.1 checks TCP, not the unix socket — socket reports ready mid-initdb
+      # before the server restarts to listen on TCP, which resets host connections.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U hiphouse"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  hiphouse-pg:

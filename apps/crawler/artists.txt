@@ -1,0 +1,10 @@
+# hiphouse 아티스트 로스터 — 힙합 아티스트를 직접 큐레이션.
+# 크롤러가 이 목록의 각 아티스트 앨범을 전부 긁어 로컬 DB에 넣음 (로스터 = 장르 필터).
+#
+# 한 줄에 하나. '#' 뒤는 주석. 아래 형식 모두 인식:
+#   3nFkdlSjzX9mRTtwJOzDYB
+#   spotify:artist:3nFkdlSjzX9mRTtwJOzDYB
+#   https://open.spotify.com/artist/3nFkdlSjzX9mRTtwJOzDYB
+#
+# Spotify 아티스트 페이지 → 공유(…) → "링크 복사" 붙여넣으면 됨.
+# ↓ 여기부터 추가:

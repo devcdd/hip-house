@@ -1,0 +1,42 @@
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 24px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 28px 20px;
+}
+
+.item {
+  position: relative;
+}
+
+.state {
+  color: var(--muted);
+  padding: 8px 0;
+}
+
+.login {
+  width: fit-content;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 999px;
+  background: #fee500;
+  color: #191600;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
