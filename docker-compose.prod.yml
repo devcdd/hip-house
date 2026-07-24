@@ -1,0 +1,50 @@
+# Production stack — pulls images from ghcr.io. Put runtime secrets in .env (see .env.example).
+# Set GH_OWNER=<github owner, lowercase> in .env.
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: hiphouse-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hiphouse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hiphouse}
+      POSTGRES_DB: ${POSTGRES_DB:-hiphouse}
+    volumes:
+      - hiphouse-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER:-hiphouse}"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  api:
+    image: ghcr.io/${GH_OWNER}/hiphouse-api:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-hiphouse}:${POSTGRES_PASSWORD:-hiphouse}@db:5432/${POSTGRES_DB:-hiphouse}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    image: ghcr.io/${GH_OWNER}/hiphouse-web:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
+  # One-shot crawler: docker compose -f docker-compose.prod.yml --profile crawl run --rm crawler
+  crawler:
+    image: ghcr.io/${GH_OWNER}/hiphouse-crawler:latest
+    profiles: ["crawl"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-hiphouse}:${POSTGRES_PASSWORD:-hiphouse}@db:5432/${POSTGRES_DB:-hiphouse}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  hiphouse-pg:
