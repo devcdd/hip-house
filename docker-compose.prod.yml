@@ -30,8 +30,10 @@ services:
   web:
     image: ghcr.io/${GH_OWNER}/hiphouse-web:latest
     restart: unless-stopped
+    # Host nginx (see deploy/nginx/hiphouse.kr.conf) terminates 80/443 and proxies here.
+    # Bind to loopback only so the container isn't reachable from outside the host.
     ports:
-      - "80:80"
+      - "127.0.0.1:8080:80"
     depends_on:
       - api
 
