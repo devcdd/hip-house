@@ -1,4 +1,4 @@
-import { AlbumCard } from '@/entities/album'
+import { AlbumCard, AlbumCardSkeleton } from '@/entities/album'
 import { useAuth } from '@/entities/session'
 import { FavoriteButton, useFavoriteAlbums } from '@/features/favorite-album'
 import { startKakaoLogin } from '@/features/auth'
@@ -22,7 +22,6 @@ export function FavoritesPage() {
   return (
     <div className={styles.page}>
       <h1 className={styles.title}>즐겨찾기</h1>
-      {isLoading && <p className={styles.state}>불러오는 중…</p>}
       {!isLoading && (albums?.length ?? 0) === 0 && <p className={styles.state}>아직 즐겨찾기한 앨범이 없습니다.</p>}
       <div className={styles.grid}>
         {albums?.map((a) => (
@@ -31,6 +30,12 @@ export function FavoritesPage() {
             <AlbumCard album={a} />
           </div>
         ))}
+        {isLoading &&
+          Array.from({ length: 8 }, (_, i) => (
+            <div key={`skeleton-${i}`} className={styles.item}>
+              <AlbumCardSkeleton />
+            </div>
+          ))}
       </div>
     </div>
   )

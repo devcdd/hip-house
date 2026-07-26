@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { AlbumCard, useAlbumFeed } from '@/entities/album'
+import { AlbumCard, AlbumCardSkeleton, useAlbumFeed } from '@/entities/album'
 import type { AlbumQuery } from '@/entities/album'
 import { useInfiniteScroll } from '@/shared/lib/useInfiniteScroll'
 import styles from './AlbumFeed.module.css'
@@ -21,9 +21,15 @@ export function AlbumFeed({ params }: { params: AlbumQuery }) {
             <AlbumCard album={a} />
           </div>
         ))}
+        {isLoading &&
+          Array.from({ length: 12 }, (_, i) => (
+            <div key={`skeleton-${i}`} className={styles.item}>
+              <AlbumCardSkeleton />
+            </div>
+          ))}
       </div>
       {hasNextPage && <div ref={sentinel} className={styles.sentinel} />}
-      {(isLoading || isFetchingNextPage) && <p className={styles.state}>불러오는 중…</p>}
+      {isFetchingNextPage && <p className={styles.state}>불러오는 중…</p>}
       {!isLoading && !error && albums.length === 0 && <p className={styles.state}>앨범이 없습니다.</p>}
     </div>
   )

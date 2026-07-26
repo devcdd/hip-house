@@ -6,6 +6,7 @@ import { useAuth } from '@/entities/session'
 import { FavoriteButton, useFavoriteIds } from '@/features/favorite-album'
 import { startKakaoLogin } from '@/features/auth'
 import { apiDelete, apiPost } from '@/shared/api/client'
+import { AlbumDetailSkeleton } from './AlbumDetailSkeleton'
 import styles from './AlbumDetailPage.module.css'
 
 export function AlbumDetailPage() {
@@ -33,7 +34,7 @@ export function AlbumDetailPage() {
         ← 목록
       </button>
 
-      {loading && <p className={styles.state}>불러오는 중…</p>}
+      {loading && <AlbumDetailSkeleton />}
       {error && <p className={styles.state}>불러오기 실패: {String(error)}</p>}
 
       {album && (
