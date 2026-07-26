@@ -7,6 +7,7 @@
     "crawl": "node --env-file-if-exists=../../.env src/index.js",
     "search": "node --env-file-if-exists=../../.env src/search.js",
     "enrich": "node --env-file-if-exists=../../.env src/enrich.js",
+    "cleanup": "node --env-file-if-exists=../../.env src/cleanup.js",
     "test": "node test.js"
   },
   "dependencies": {

@@ -54,16 +54,18 @@ if (!picked.length) {
 // 3) save + crawl albums
 const db = await openDb();
 let total = 0;
-const credited = new Set(); // picked + every featured artist across their albums
+// Only artists that actually have albums get saved (picked + featured) —
+// a 0-album pick leaves no empty row in the artists table.
+const credited = new Set();
 for (const a of picked) {
-  credited.add(a.id);
   const albums = await fetchArtistAlbums(a.id, tokenRef);
+  if (albums.length > 0) credited.add(a.id);
   for (const al of albums) {
     await upsertAlbum(db, al);
     for (const c of albumArtists(al)) credited.add(c.id);
   }
   total += albums.length;
-  console.log(`  ${a.name}: ${albums.length} albums`);
+  console.log(`  ${a.name}: ${albums.length} albums${albums.length ? "" : " — skipped (not saved)"}`);
 }
 // Backfill name + image for every credited artist (featured included) via the full endpoint.
 await enrichArtists(db, tokenRef, [...credited]);

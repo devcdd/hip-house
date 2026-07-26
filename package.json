@@ -10,7 +10,8 @@
     "crawl": "pnpm --filter @hiphouse/crawler crawl",
     "search": "pnpm --filter @hiphouse/crawler search",
     "artist": "pnpm --filter @hiphouse/crawler search",
-    "enrich": "pnpm --filter @hiphouse/crawler enrich"
+    "enrich": "pnpm --filter @hiphouse/crawler enrich",
+    "cleanup": "pnpm --filter @hiphouse/crawler cleanup"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

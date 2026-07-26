@@ -232,15 +232,18 @@ async function main() {
   const rosterDetails = await fetchArtistDetails(ids, tokenRef);
 
   let total = 0;
-  const credited = new Set(ids); // roster + every artist ID seen across crawled albums (featured incl.)
+  // Every artist that actually has albums here (roster + featured). Artists with
+  // zero albums are deliberately NOT saved — no empty rows in the artists table.
+  const credited = new Set();
   for (const id of ids) {
     const albums = await fetchArtistAlbums(id, tokenRef);
+    if (albums.length > 0) credited.add(id);
     for (const al of albums) {
       await upsertAlbum(db, al);
       for (const a of albumArtists(al)) credited.add(a.id);
     }
     total += albums.length;
-    console.log(`  ${rosterDetails.get(id)?.name ?? id}: ${albums.length} albums`);
+    console.log(`  ${rosterDetails.get(id)?.name ?? id}: ${albums.length} albums${albums.length ? "" : " — skipped (not saved)"}`);
   }
 
   // Backfill name + image for every credited artist (featured included) via the full endpoint.
