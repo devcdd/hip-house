@@ -19,6 +19,7 @@ type server struct {
 	kakaoKey    string
 	kakaoSecret string
 	adminIDs    map[string]bool
+	sp          *spotifyTokens
 }
 
 func main() {
@@ -44,6 +45,7 @@ func main() {
 		kakaoKey:    os.Getenv("KAKAO_REST_API_KEY"),
 		kakaoSecret: os.Getenv("KAKAO_CLIENT_SECRET"),
 		adminIDs:    parseAdminIDs(os.Getenv("ADMIN_KAKAO_IDS")),
+		sp:          newSpotifyTokens(),
 	}
 	if err := s.ensureAuthSchema(ctx); err != nil {
 		log.Fatalf("auth schema: %v", err)
@@ -79,6 +81,10 @@ func main() {
 	mux.HandleFunc("PUT /artists/{id}/aliases", s.requireAdmin(s.updateArtistAliases))
 	mux.HandleFunc("POST /artists/merge", s.requireAdmin(s.mergeArtists))
 	mux.HandleFunc("DELETE /artists/{id}", s.requireAdmin(s.deleteArtist))
+
+	// Admin crawling — Spotify search + pull a picked artist's albums into the DB
+	mux.HandleFunc("GET /admin/spotify/artists", s.requireAdmin(s.adminSpotifySearch))
+	mux.HandleFunc("POST /admin/spotify/crawl", s.requireAdmin(s.adminSpotifyCrawl))
 
 	mux.HandleFunc("GET /openapi.json", serveSpec)
 	mux.HandleFunc("GET /swagger/", swaggerUI)

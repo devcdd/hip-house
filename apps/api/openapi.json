@@ -138,6 +138,45 @@
         }
       }
     },
+    "/admin/spotify/artists": {
+      "get": {
+        "tags": ["artists"],
+        "summary": "Spotify 아티스트 검색 (관리자 크롤링용)",
+        "description": "Spotify 검색 후보에 우리 DB의 앨범 보유 수(albums_in_db)를 붙여 반환. key로 FIRST_/SECOND_ 자격증명 선택.",
+        "parameters": [
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "key", "in": "query", "schema": { "type": "string", "enum": ["first", "second"] } }
+        ],
+        "responses": {
+          "200": {
+            "description": "후보 배열",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "type": "object", "properties": {
+              "id": { "type": "string" }, "name": { "type": "string" },
+              "image_url": { "type": "string", "nullable": true },
+              "followers": { "type": "integer" }, "albums_in_db": { "type": "integer" }
+            } } } } }
+          }
+        }
+      }
+    },
+    "/admin/spotify/crawl": {
+      "post": {
+        "tags": ["artists"],
+        "summary": "아티스트 앨범 크롤 (관리자)",
+        "description": "해당 아티스트의 전체 앨범을 Spotify에서 가져와 저장. 앨범 0개면 아티스트를 저장하지 않음. 크레딧 아티스트 중 이미지 없는 것만 개별 enrich.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["artist_id"], "properties": {
+            "artist_id": { "type": "string" },
+            "key": { "type": "string", "enum": ["first", "second"] }
+          } } } }
+        },
+        "responses": {
+          "200": { "description": "크롤 결과 {albums, saved, artist_name, artists, enriched}" },
+          "502": { "description": "Spotify API 오류", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
     "/artists/merge": {
       "post": {
         "tags": ["artists"],

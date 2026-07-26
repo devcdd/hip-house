@@ -77,6 +77,49 @@ func TestBuildAlbumListQuery(t *testing.T) {
 	}
 }
 
+func TestSpotifyCreds(t *testing.T) {
+	t.Setenv("SPOTIFY_CLIENT_ID", "plain")
+	t.Setenv("SPOTIFY_CLIENT_SECRET", "s")
+	t.Setenv("FIRST_SPOTIFY_CLIENT_ID", "one")
+	t.Setenv("FIRST_SPOTIFY_CLIENT_SECRET", "s1")
+	t.Setenv("SECOND_SPOTIFY_CLIENT_ID", "two")
+	t.Setenv("SECOND_SPOTIFY_CLIENT_SECRET", "s2")
+
+	// no key → unprefixed wins
+	if id, _, _ := spotifyCreds(""); id != "plain" {
+		t.Fatalf("default key = %q, want plain", id)
+	}
+	// explicit keys pick their prefix
+	if id, _, _ := spotifyCreds("first"); id != "one" {
+		t.Fatalf("first = %q", id)
+	}
+	if id, _, _ := spotifyCreds("SECOND"); id != "two" { // case-insensitive
+		t.Fatalf("second = %q", id)
+	}
+	// unknown key → error naming the expected vars
+	if _, _, err := spotifyCreds("third"); err == nil || !strings.Contains(err.Error(), "THIRD_SPOTIFY_CLIENT_ID") {
+		t.Fatalf("unknown key error = %v", err)
+	}
+
+	// unprefixed absent → FIRST_ fallback for the default key
+	t.Setenv("SPOTIFY_CLIENT_ID", "")
+	if id, _, _ := spotifyCreds(""); id != "one" {
+		t.Fatalf("fallback = %q, want one", id)
+	}
+}
+
+func TestYearOf(t *testing.T) {
+	if y := yearOf("2023-05-01"); y == nil || *y != 2023 {
+		t.Fatalf("yearOf full date = %v", y)
+	}
+	if y := yearOf("2019"); y == nil || *y != 2019 {
+		t.Fatalf("yearOf year-only = %v", y)
+	}
+	if yearOf("") != nil || yearOf("abc") != nil {
+		t.Fatal("yearOf junk should be nil")
+	}
+}
+
 func TestNormalizeAliases(t *testing.T) {
 	got := normalizeAliases([]string{" 블랙넛 ", "", "블넛", "블랙넛", "  "})
 	if len(got) != 2 || got[0] != "블랙넛" || got[1] != "블넛" {
