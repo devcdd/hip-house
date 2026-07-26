@@ -95,20 +95,36 @@ export async function spFetch(url, tokenRef) {
   }
 }
 
-// Full artist objects (name, images, genres, profile URL) for a set of IDs, 50 per
-// request (Spotify's cap). The simplified artists embedded in albums lack all of these.
+// Full artist objects (name, images, genres, profile URL) for a set of IDs.
+// The simplified artists embedded in albums lack all of these. Tries the batch
+// endpoint (50/request) first; Spotify 403s it for some dev-mode apps, so fall
+// back to per-artist requests — same data, just more calls.
 async function fetchArtistDetails(ids, tokenRef) {
   const details = new Map();
+  const put = (a) => {
+    if (!a) return;
+    details.set(a.id, {
+      name: a.name ?? null,
+      image_url: a.images?.[0]?.url ?? null,
+      genres: a.genres ?? [],
+      spotify_url: a.external_urls?.spotify ?? null,
+    });
+  };
   for (let i = 0; i < ids.length; i += 50) {
-    const data = await spFetch(`${API}/artists?ids=${ids.slice(i, i + 50).join(",")}`, tokenRef);
-    for (const a of data.artists ?? [])
-      if (a)
-        details.set(a.id, {
-          name: a.name ?? null,
-          image_url: a.images?.[0]?.url ?? null,
-          genres: a.genres ?? [],
-          spotify_url: a.external_urls?.spotify ?? null,
-        });
+    const batch = ids.slice(i, i + 50);
+    try {
+      const data = await spFetch(`${API}/artists?ids=${batch.join(",")}`, tokenRef);
+      for (const a of data.artists ?? []) put(a);
+    } catch (e) {
+      console.error(`  batch /artists failed (${e.message.split(" @ ")[0]}) — fetching ${batch.length} artists one by one`);
+      for (const id of batch) {
+        try {
+          put(await spFetch(`${API}/artists/${id}`, tokenRef));
+        } catch (e2) {
+          console.error(`  skip ${id}: ${e2.message.split(" @ ")[0]}`);
+        }
+      }
+    }
   }
   return details;
 }
