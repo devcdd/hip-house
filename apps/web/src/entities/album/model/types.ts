@@ -1,9 +1,13 @@
 // Mirrors the Go `Album` struct (apps/api/albums.go).
+export interface AlbumArtist {
+  id: string
+  name: string | null
+}
+
 export interface Album {
   id: string
   name: string
-  artist_id: string
-  artist_name: string
+  artists: AlbumArtist[] // every credited artist, ordered; from the album_artists join
   release_date: string | null
   year: number | null
   album_type: string | null

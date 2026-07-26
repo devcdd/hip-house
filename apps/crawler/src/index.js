@@ -31,12 +31,10 @@ export const yearOf = (releaseDate) => {
   return Number.isInteger(y) ? y : null;
 };
 
-export function toAlbumRow(album, rosterArtistId) {
+export function toAlbumRow(album) {
   return {
     id: album.id,
     name: album.name,
-    artist_id: rosterArtistId,
-    artist_name: (album.artists ?? []).map((a) => a.name).join(", "),
     release_date: album.release_date ?? null,
     year: yearOf(album.release_date),
     album_type: album.album_type ?? null,
@@ -44,6 +42,13 @@ export function toAlbumRow(album, rosterArtistId) {
     image_url: album.images?.[0]?.url ?? null,
     spotify_url: album.external_urls?.spotify ?? null,
   };
+}
+
+// Every credited artist on the album, in Spotify's order, with real Spotify IDs.
+export function albumArtists(album) {
+  return (album.artists ?? [])
+    .filter((a) => a?.id)
+    .map((a, position) => ({ id: a.id, name: a.name ?? null, position }));
 }
 
 // ---- Spotify ----
@@ -114,15 +119,31 @@ export async function fetchArtistAlbums(artistId, tokenRef) {
 export const upsertArtist = (db, id, name) =>
   db.query("INSERT INTO artists(id,name) VALUES($1,$2) ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name", [id, name]);
 
-export const upsertAlbum = (db, r) =>
+const upsertAlbumRow = (db, r) =>
   db.query(
-    `INSERT INTO albums(id,name,artist_id,artist_name,release_date,year,album_type,total_tracks,image_url,spotify_url)
-     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-     ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name, artist_id=EXCLUDED.artist_id, artist_name=EXCLUDED.artist_name,
+    `INSERT INTO albums(id,name,release_date,year,album_type,total_tracks,image_url,spotify_url)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+     ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name,
        release_date=EXCLUDED.release_date, year=EXCLUDED.year, album_type=EXCLUDED.album_type,
        total_tracks=EXCLUDED.total_tracks, image_url=EXCLUDED.image_url, spotify_url=EXCLUDED.spotify_url`,
-    [r.id, r.name, r.artist_id, r.artist_name, r.release_date, r.year, r.album_type, r.total_tracks, r.image_url, r.spotify_url]
+    [r.id, r.name, r.release_date, r.year, r.album_type, r.total_tracks, r.image_url, r.spotify_url]
   );
+
+// Persist an album and ALL its credited artists: upsert the album row, upsert each
+// artist by real Spotify ID, then rewrite the album_artists join rows.
+export async function upsertAlbum(db, album) {
+  const row = toAlbumRow(album);
+  await upsertAlbumRow(db, row);
+  const artists = albumArtists(album);
+  await db.query("DELETE FROM album_artists WHERE album_id=$1", [row.id]);
+  for (const a of artists) {
+    await upsertArtist(db, a.id, a.name);
+    await db.query(
+      "INSERT INTO album_artists(album_id,artist_id,position) VALUES($1,$2,$3) ON CONFLICT(album_id,artist_id) DO UPDATE SET position=EXCLUDED.position",
+      [row.id, a.id, a.position]
+    );
+  }
+}
 
 export async function openDb() {
   const db = new pg.Client({ connectionString: DATABASE_URL });
@@ -131,12 +152,17 @@ export async function openDb() {
     CREATE TABLE IF NOT EXISTS artists (id TEXT PRIMARY KEY, name TEXT);
     CREATE TABLE IF NOT EXISTS albums (
       id TEXT PRIMARY KEY, name TEXT NOT NULL,
-      artist_id TEXT NOT NULL, artist_name TEXT NOT NULL,
       release_date TEXT, year INTEGER, album_type TEXT,
       total_tracks INTEGER, image_url TEXT, spotify_url TEXT
     );
+    -- Many-to-many: an album can credit multiple artists, each by real Spotify ID.
+    CREATE TABLE IF NOT EXISTS album_artists (
+      album_id TEXT NOT NULL, artist_id TEXT NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (album_id, artist_id)
+    );
     CREATE INDEX IF NOT EXISTS idx_albums_year ON albums(year);
-    CREATE INDEX IF NOT EXISTS idx_albums_artist ON albums(artist_id);
+    CREATE INDEX IF NOT EXISTS idx_album_artists_artist ON album_artists(artist_id);
   `);
   return db;
 }
@@ -161,7 +187,7 @@ async function main() {
   let total = 0;
   for (const id of ids) {
     const albums = await fetchArtistAlbums(id, tokenRef);
-    for (const al of albums) await upsertAlbum(db, toAlbumRow(al, id));
+    for (const al of albums) await upsertAlbum(db, al);
     total += albums.length;
     console.log(`  ${names.get(id) ?? id}: ${albums.length} albums`);
   }

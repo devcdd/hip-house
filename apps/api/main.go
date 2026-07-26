@@ -86,7 +86,8 @@ func main() {
 	log.Fatal(srv.ListenAndServe())
 }
 
-// ensureAuthSchema creates the users/favorites tables (the crawler owns albums/artists).
+// ensureAuthSchema creates the users/favorites tables and runs idempotent
+// migrations on the crawler-owned albums/artists tables (safe to run on every boot).
 func (s *server) ensureAuthSchema(ctx context.Context) error {
 	_, err := s.db.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS users (
@@ -101,7 +102,34 @@ func (s *server) ensureAuthSchema(ctx context.Context) error {
 			created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 			PRIMARY KEY (user_id, album_id)
 		);
-		ALTER TABLE IF EXISTS albums ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;`)
+		ALTER TABLE IF EXISTS albums ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+
+		-- Normalize album↔artist into a many-to-many join (was albums.artist_id/artist_name).
+		CREATE TABLE IF NOT EXISTS album_artists (
+			album_id  TEXT NOT NULL,
+			artist_id TEXT NOT NULL,
+			position  INTEGER NOT NULL DEFAULT 0,
+			PRIMARY KEY (album_id, artist_id)
+		);
+		CREATE INDEX IF NOT EXISTS idx_album_artists_artist ON album_artists(artist_id);
+
+		-- Backfill the legacy single-artist column into the join table. We DON'T drop
+		-- the old artist_id/artist_name columns: artist_name still holds the only record
+		-- of featured artists (they never had IDs), so keeping it avoids data loss and
+		-- lets an old API image roll back. We just relax NOT NULL so the normalized
+		-- crawler/API can ignore them. A re-crawl repopulates album_artists with real
+		-- IDs for every credited artist; the dead columns can be dropped later.
+		DO $$
+		BEGIN
+			IF EXISTS (SELECT 1 FROM information_schema.columns
+			           WHERE table_name = 'albums' AND column_name = 'artist_id') THEN
+				INSERT INTO album_artists(album_id, artist_id, position)
+				SELECT id, artist_id, 0 FROM albums WHERE artist_id IS NOT NULL AND artist_id <> ''
+				ON CONFLICT DO NOTHING;
+				ALTER TABLE albums ALTER COLUMN artist_id DROP NOT NULL;
+				ALTER TABLE albums ALTER COLUMN artist_name DROP NOT NULL;
+			END IF;
+		END $$;`)
 	return err
 }
 

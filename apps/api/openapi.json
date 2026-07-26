@@ -144,12 +144,15 @@
     "schemas": {
       "Album": {
         "type": "object",
-        "required": ["id", "name", "artist_id", "artist_name"],
+        "required": ["id", "name", "artists"],
         "properties": {
           "id": { "type": "string", "example": "4aawyAB9vmqN3uQ7FjRGTy" },
           "name": { "type": "string", "example": "Album Name" },
-          "artist_id": { "type": "string", "example": "1uNFoZAHBGtllmzznpCI3s" },
-          "artist_name": { "type": "string", "example": "Artist Name" },
+          "artists": {
+            "type": "array",
+            "description": "크레딧된 모든 아티스트 (Spotify 순서). album_artists 조인에서 집계.",
+            "items": { "$ref": "#/components/schemas/Artist" }
+          },
           "release_date": { "type": "string", "nullable": true, "example": "2024-05-01" },
           "year": { "type": "integer", "nullable": true, "example": 2024 },
           "album_type": { "type": "string", "nullable": true, "example": "album" },

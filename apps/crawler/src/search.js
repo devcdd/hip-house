@@ -3,7 +3,7 @@
 // Run: node --env-file-if-exists=.env src/search.js "artist name" ["name2" ...]
 
 import { createInterface } from "node:readline/promises";
-import { getToken, spFetch, openDb, toAlbumRow, fetchArtistAlbums, upsertArtist, upsertAlbum } from "./index.js";
+import { getToken, spFetch, openDb, fetchArtistAlbums, upsertArtist, upsertAlbum } from "./index.js";
 
 const API = "https://api.spotify.com/v1";
 const names = process.argv.slice(2);
@@ -57,7 +57,7 @@ let total = 0;
 for (const a of picked) {
   await upsertArtist(db, a.id, a.name);
   const albums = await fetchArtistAlbums(a.id, tokenRef);
-  for (const al of albums) await upsertAlbum(db, toAlbumRow(al, a.id));
+  for (const al of albums) await upsertAlbum(db, al);
   total += albums.length;
   console.log(`  ${a.name}: ${albums.length} albums`);
 }

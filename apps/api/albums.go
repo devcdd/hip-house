@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
@@ -23,31 +24,42 @@ func typeCond(t string) string {
 	return ""
 }
 
+// AlbumArtist is one credited artist on an album (via the album_artists join).
+type AlbumArtist struct {
+	ID   string  `json:"id"`
+	Name *string `json:"name"`
+}
+
 type Album struct {
 	ID          string  `json:"id" db:"id"`
 	Name        string  `json:"name" db:"name"`
-	ArtistID    string  `json:"artist_id" db:"artist_id"`
-	ArtistName  string  `json:"artist_name" db:"artist_name"`
 	ReleaseDate *string `json:"release_date" db:"release_date"`
 	Year        *int    `json:"year" db:"year"`
 	AlbumType   *string `json:"album_type" db:"album_type"`
 	TotalTracks *int    `json:"total_tracks" db:"total_tracks"`
 	ImageURL    *string `json:"image_url" db:"image_url"`
 	SpotifyURL  *string `json:"spotify_url" db:"spotify_url"`
-	// Read-only, computed on SELECT (not written).
-	TypeLabel *string `json:"type_label" db:"type_label"`
-	DeletedAt *string `json:"deleted_at" db:"deleted_at"`
+	// Read-only, computed on SELECT (not written to the albums table).
+	TypeLabel *string       `json:"type_label" db:"type_label"`
+	DeletedAt *string       `json:"deleted_at" db:"deleted_at"`
+	Artists   []AlbumArtist `json:"artists" db:"artists"` // aggregated from album_artists, ordered by position
 }
 
-// albumCols: writable columns (INSERT/UPDATE). selectCols adds computed read-only fields.
-const albumCols = "id,name,artist_id,artist_name,release_date,year,album_type,total_tracks,image_url,spotify_url"
+// albumCols: writable scalar columns on the albums table (INSERT/UPDATE).
+// Artists live in the album_artists join table, written separately in a tx.
+const albumCols = "id,name,release_date,year,album_type,total_tracks,image_url,spotify_url"
 
 const albumSelectCols = albumCols + `,
 	CASE WHEN album_type='album' THEN '정규'
 	     WHEN album_type='single' AND total_tracks >= 3 THEN 'EP'
 	     WHEN album_type='single' THEN '싱글'
 	     ELSE album_type END AS type_label,
-	deleted_at::text AS deleted_at`
+	deleted_at::text AS deleted_at,
+	COALESCE((
+		SELECT json_agg(json_build_object('id', ar.id, 'name', ar.name) ORDER BY aa.position)
+		FROM album_artists aa JOIN artists ar ON ar.id = aa.artist_id
+		WHERE aa.album_id = albums.id
+	), '[]'::json) AS artists`
 
 // orderClause maps a sort key to a whitelisted ORDER BY (never interpolate raw input).
 func orderClause(sort string) string {
@@ -73,7 +85,7 @@ func buildAlbumListQuery(year *int, artistID, q string, types []string, sort str
 	}
 	if artistID != "" {
 		args = append(args, artistID)
-		sql += " AND artist_id = $" + strconv.Itoa(len(args))
+		sql += " AND EXISTS (SELECT 1 FROM album_artists aa WHERE aa.album_id = albums.id AND aa.artist_id = $" + strconv.Itoa(len(args)) + ")"
 	}
 	if q != "" {
 		args = append(args, "%"+q+"%")
@@ -103,12 +115,36 @@ func (a *Album) validate() string {
 		return "id is required"
 	case a.Name == "":
 		return "name is required"
-	case a.ArtistID == "":
-		return "artist_id is required"
-	case a.ArtistName == "":
-		return "artist_name is required"
+	case len(a.Artists) == 0:
+		return "at least one artist is required"
+	}
+	for _, ar := range a.Artists {
+		if ar.ID == "" {
+			return "artist id is required"
+		}
 	}
 	return ""
+}
+
+// replaceAlbumArtists upserts each artist and rewrites the album's join rows.
+// Runs inside the caller's transaction so an album + its artists commit atomically.
+func replaceAlbumArtists(ctx context.Context, tx pgx.Tx, albumID string, artists []AlbumArtist) error {
+	if _, err := tx.Exec(ctx, "DELETE FROM album_artists WHERE album_id=$1", albumID); err != nil {
+		return err
+	}
+	for i, ar := range artists {
+		if _, err := tx.Exec(ctx,
+			"INSERT INTO artists(id,name) VALUES($1,$2) ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name",
+			ar.ID, ar.Name); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx,
+			"INSERT INTO album_artists(album_id,artist_id,position) VALUES($1,$2,$3) ON CONFLICT(album_id,artist_id) DO UPDATE SET position=EXCLUDED.position",
+			albumID, ar.ID, i); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *server) listAlbums(w http.ResponseWriter, r *http.Request) {
@@ -182,15 +218,30 @@ func (s *server) createAlbum(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, msg)
 		return
 	}
-	_, err := s.db.Exec(r.Context(),
-		"INSERT INTO albums("+albumCols+") VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
-		a.ID, a.Name, a.ArtistID, a.ArtistName, a.ReleaseDate, a.Year, a.AlbumType, a.TotalTracks, a.ImageURL, a.SpotifyURL)
+	tx, err := s.db.Begin(r.Context())
+	if err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	_, err = tx.Exec(r.Context(),
+		"INSERT INTO albums("+albumCols+") VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
+		a.ID, a.Name, a.ReleaseDate, a.Year, a.AlbumType, a.TotalTracks, a.ImageURL, a.SpotifyURL)
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 		writeErr(w, 409, "album id already exists")
 		return
 	}
 	if err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	if err := replaceAlbumArtists(r.Context(), tx, a.ID, a.Artists); err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
 		writeErr(w, 500, err.Error())
 		return
 	}
@@ -207,15 +258,30 @@ func (s *server) updateAlbum(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, msg)
 		return
 	}
-	tag, err := s.db.Exec(r.Context(),
-		"UPDATE albums SET name=$2,artist_id=$3,artist_name=$4,release_date=$5,year=$6,album_type=$7,total_tracks=$8,image_url=$9,spotify_url=$10 WHERE id=$1",
-		a.ID, a.Name, a.ArtistID, a.ArtistName, a.ReleaseDate, a.Year, a.AlbumType, a.TotalTracks, a.ImageURL, a.SpotifyURL)
+	tx, err := s.db.Begin(r.Context())
+	if err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	tag, err := tx.Exec(r.Context(),
+		"UPDATE albums SET name=$2,release_date=$3,year=$4,album_type=$5,total_tracks=$6,image_url=$7,spotify_url=$8 WHERE id=$1",
+		a.ID, a.Name, a.ReleaseDate, a.Year, a.AlbumType, a.TotalTracks, a.ImageURL, a.SpotifyURL)
 	if err != nil {
 		writeErr(w, 500, err.Error())
 		return
 	}
 	if tag.RowsAffected() == 0 {
 		writeErr(w, 404, "album not found")
+		return
+	}
+	if err := replaceAlbumArtists(r.Context(), tx, a.ID, a.Artists); err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		writeErr(w, 500, err.Error())
 		return
 	}
 	writeJSON(w, 200, a)

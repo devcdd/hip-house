@@ -1,4 +1,5 @@
-import { useNavigate, useParams } from 'react-router-dom'
+import { Fragment } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAlbum } from '@/entities/album'
 import { useAuth } from '@/entities/session'
@@ -50,7 +51,14 @@ export function AlbumDetailPage() {
               {album.name}
               {album.deleted_at && <span className={styles.deletedBadge}>삭제됨</span>}
             </h1>
-            <p className={styles.artist}>{album.artist_name}</p>
+            <p className={styles.artist}>
+              {album.artists.map((a, i) => (
+                <Fragment key={a.id}>
+                  {i > 0 && ', '}
+                  <Link to={`/artists/${encodeURIComponent(a.id)}`}>{a.name ?? a.id}</Link>
+                </Fragment>
+              ))}
+            </p>
 
             <dl className={styles.facts}>
               {album.year != null && <Fact label="발매 연도" value={album.year} />}
