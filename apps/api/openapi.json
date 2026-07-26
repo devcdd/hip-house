@@ -18,6 +18,8 @@
         "parameters": [
           { "name": "year", "in": "query", "schema": { "type": "integer" }, "description": "발매 연도로 필터" },
           { "name": "artist_id", "in": "query", "schema": { "type": "string" }, "description": "아티스트 ID로 필터" },
+          { "name": "q", "in": "query", "schema": { "type": "string" }, "description": "검색어 — 앨범명, 크레딧 아티스트명, 아티스트 연관검색어(aliases)에 매칭" },
+          { "name": "deleted", "in": "query", "schema": { "type": "string", "enum": ["only"] }, "description": "only = 소프트삭제된 앨범만 (관리자 전용; 비관리자에겐 무시됨)" },
           { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "minimum": 1, "maximum": 200 } },
           { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
         ],
@@ -79,6 +81,7 @@
         "tags": ["artists"],
         "summary": "아티스트 목록",
         "parameters": [
+          { "name": "q", "in": "query", "schema": { "type": "string" }, "description": "검색어 — 아티스트명 또는 연관검색어(aliases)에 매칭" },
           { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "minimum": 1, "maximum": 200 } },
           { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
         ],
@@ -134,6 +137,33 @@
           "404": { "$ref": "#/components/responses/NotFound" }
         }
       }
+    },
+    "/artists/{id}/aliases": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+      "put": {
+        "tags": ["artists"],
+        "summary": "연관검색어(aliases)만 교체 (관리자 전용)",
+        "description": "크롤러가 관리하는 필드(name/image/genres/spotify_url)는 건드리지 않고 aliases만 바꾼다.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["aliases"],
+                "properties": {
+                  "aliases": { "type": "array", "items": { "type": "string" }, "example": ["블랙넛", "블넛"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "수정된 아티스트", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Artist" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
     }
   },
   "components": {
@@ -169,7 +199,8 @@
           "name": { "type": "string", "nullable": true, "example": "Artist Name" },
           "image_url": { "type": "string", "nullable": true, "description": "Spotify 아티스트 사진 (없을 수 있음)" },
           "genres": { "type": "array", "items": { "type": "string" }, "nullable": true, "description": "Spotify 아티스트 장르 (비어있을 수 있음)" },
-          "spotify_url": { "type": "string", "nullable": true, "description": "Spotify 아티스트 프로필 URL" }
+          "spotify_url": { "type": "string", "nullable": true, "description": "Spotify 아티스트 프로필 URL" },
+          "aliases": { "type": "array", "items": { "type": "string" }, "nullable": true, "description": "연관검색어 — 관리자가 등록한 검색 키워드 (예: 영문명의 한글 표기). 검색 시 name과 함께 매칭됨" }
         }
       },
       "Error": {

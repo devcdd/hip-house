@@ -29,6 +29,15 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return handle<T>(res)
 }
 
+export async function apiPut<T>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(API_BASE + path, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  })
+  return handle<T>(res)
+}
+
 export async function apiDelete<T>(path: string): Promise<T> {
   return handle<T>(await fetch(API_BASE + path, { method: 'DELETE', headers: authHeaders() }))
 }

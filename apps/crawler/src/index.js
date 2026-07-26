@@ -175,10 +175,13 @@ export async function openDb() {
   const db = new pg.Client({ connectionString: DATABASE_URL });
   await db.connect();
   await db.query(`
-    CREATE TABLE IF NOT EXISTS artists (id TEXT PRIMARY KEY, name TEXT, image_url TEXT, genres TEXT[], spotify_url TEXT);
+    -- aliases (연관검색어) is admin-curated via the API and never written here:
+    -- upsertArtist's ON CONFLICT UPDATE doesn't touch it, so re-crawls preserve it.
+    CREATE TABLE IF NOT EXISTS artists (id TEXT PRIMARY KEY, name TEXT, image_url TEXT, genres TEXT[], spotify_url TEXT, aliases TEXT[]);
     ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS image_url TEXT;
     ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS genres TEXT[];
     ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS spotify_url TEXT;
+    ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS aliases TEXT[];
     CREATE TABLE IF NOT EXISTS albums (
       id TEXT PRIMARY KEY, name TEXT NOT NULL,
       release_date TEXT, year INTEGER, album_type TEXT,

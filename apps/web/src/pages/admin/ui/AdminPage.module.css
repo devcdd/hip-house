@@ -1,0 +1,248 @@
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 24px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.tab {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--fg);
+}
+
+.active {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.state {
+  color: var(--muted);
+  padding: 24px;
+  text-align: center;
+}
+
+/* --- 삭제된 앨범 --- */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 28px 20px;
+}
+
+.item {
+  position: relative;
+  opacity: 0.75;
+}
+
+.restore {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  padding: 5px 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.restore:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.sentinel {
+  height: 1px;
+}
+
+/* --- 연관검색어 --- */
+
+.aliasWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.searchForm {
+  display: flex;
+  gap: 8px;
+  max-width: 420px;
+}
+
+.searchInput {
+  flex: 1;
+  padding: 9px 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--fg);
+  font-size: 0.85rem;
+}
+
+.searchInput::placeholder {
+  color: var(--muted);
+}
+
+.searchInput:focus {
+  outline: 2px solid var(--muted);
+  outline-offset: -1px;
+}
+
+.searchButton {
+  padding: 9px 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.rowAvatar {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bg);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: var(--muted);
+  overflow: hidden;
+}
+
+.rowAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rowInfo {
+  flex: none;
+  width: 180px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.rowName {
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowId {
+  font-size: 0.7rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aliasInput {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 0.85rem;
+}
+
+.aliasInput::placeholder {
+  color: var(--muted);
+}
+
+.aliasInput:focus {
+  outline: 2px solid var(--muted);
+  outline-offset: -1px;
+}
+
+.save {
+  flex: none;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.save:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.rowError {
+  color: #e5484d;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 640px) {
+  .row {
+    flex-wrap: wrap;
+  }
+
+  .rowInfo {
+    flex: 1;
+    width: auto;
+  }
+
+  .aliasInput {
+    flex-basis: 100%;
+    order: 3;
+  }
+
+  .save {
+    order: 4;
+    margin-left: auto;
+  }
+}

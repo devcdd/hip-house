@@ -75,10 +75,15 @@ func orderClause(sort string) string {
 }
 
 // buildAlbumListQuery is pure so it can be unit-tested without a DB.
-// includeDeleted keeps soft-deleted rows (admin view); otherwise they're hidden.
-func buildAlbumListQuery(year *int, artistID, q string, types []string, sort string, includeDeleted bool, limit, offset int) (string, []any) {
+// deleted selects soft-delete visibility: "hide" (public), "include" (admin
+// browsing — deleted rows mixed in, dimmed client-side), "only" (admin 삭제 목록).
+func buildAlbumListQuery(year *int, artistID, q string, types []string, sort string, deleted string, limit, offset int) (string, []any) {
 	sql := "SELECT " + albumSelectCols + " FROM albums WHERE 1=1"
-	if !includeDeleted {
+	switch deleted {
+	case "include": // no filter
+	case "only":
+		sql += " AND deleted_at IS NOT NULL"
+	default: // "hide"
 		sql += " AND deleted_at IS NULL"
 	}
 	var args []any
@@ -90,9 +95,15 @@ func buildAlbumListQuery(year *int, artistID, q string, types []string, sort str
 		args = append(args, artistID)
 		sql += " AND EXISTS (SELECT 1 FROM album_artists aa WHERE aa.album_id = albums.id AND aa.artist_id = $" + strconv.Itoa(len(args)) + ")"
 	}
+	// q matches the album name, a credited artist's name, or any admin-curated
+	// alias (연관검색어) — so "블랙넛" finds albums stored under "Black Nut".
 	if q != "" {
 		args = append(args, "%"+q+"%")
-		sql += " AND name ILIKE $" + strconv.Itoa(len(args))
+		p := "$" + strconv.Itoa(len(args))
+		sql += " AND (albums.name ILIKE " + p +
+			" OR EXISTS (SELECT 1 FROM album_artists aa JOIN artists ar ON ar.id = aa.artist_id" +
+			" WHERE aa.album_id = albums.id AND (ar.name ILIKE " + p +
+			" OR EXISTS (SELECT 1 FROM unnest(COALESCE(ar.aliases,'{}'::text[])) AS al WHERE al ILIKE " + p + "))))"
 	}
 	// Multi-select album types combine with OR. Empty = no filter (전체).
 	var conds []string
@@ -160,7 +171,17 @@ func (s *server) listAlbums(w http.ResponseWriter, r *http.Request) {
 			types = append(types, t)
 		}
 	}
-	sql, args := buildAlbumListQuery(queryIntPtr(r, "year"), q.Get("artist_id"), q.Get("q"), types, q.Get("sort"), s.isAdminReq(r), limit, offset)
+	// Soft-delete visibility: public sees live albums only; admins see deleted
+	// rows mixed in, or exclusively with ?deleted=only (관리자 삭제 목록).
+	deleted := "hide"
+	if s.isAdminReq(r) {
+		if q.Get("deleted") == "only" {
+			deleted = "only"
+		} else {
+			deleted = "include"
+		}
+	}
+	sql, args := buildAlbumListQuery(queryIntPtr(r, "year"), q.Get("artist_id"), q.Get("q"), types, q.Get("sort"), deleted, limit, offset)
 	rows, err := s.db.Query(r.Context(), sql, args...)
 	if err != nil {
 		writeErr(w, 500, err.Error())

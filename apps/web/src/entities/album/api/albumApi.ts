@@ -9,6 +9,7 @@ export interface AlbumQuery {
   q?: string
   albumType?: string // 'single' | 'album'
   sort?: string // 'tracks' (default = recent)
+  deletedOnly?: boolean // admin: only soft-deleted albums (server ignores for non-admins)
 }
 
 // One page of albums. All filters optional; default sort is newest year first.
@@ -19,6 +20,7 @@ export function fetchAlbums(params: AlbumQuery & { offset: number }): Promise<Al
     q: params.q,
     type: params.albumType,
     sort: params.sort,
+    deleted: params.deletedOnly ? 'only' : undefined,
     limit: PAGE_SIZE,
     offset: params.offset,
   })

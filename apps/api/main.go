@@ -76,6 +76,7 @@ func main() {
 	mux.HandleFunc("POST /artists", s.requireAdmin(s.createArtist))
 	mux.HandleFunc("GET /artists/{id}", s.getArtist)
 	mux.HandleFunc("PUT /artists/{id}", s.requireAdmin(s.updateArtist))
+	mux.HandleFunc("PUT /artists/{id}/aliases", s.requireAdmin(s.updateArtistAliases))
 	mux.HandleFunc("DELETE /artists/{id}", s.requireAdmin(s.deleteArtist))
 
 	mux.HandleFunc("GET /openapi.json", serveSpec)
@@ -115,6 +116,7 @@ func (s *server) ensureAuthSchema(ctx context.Context) error {
 		ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS image_url TEXT;
 		ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS genres TEXT[];
 		ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS spotify_url TEXT;
+		ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS aliases TEXT[];
 
 		-- Backfill the legacy single-artist column into the join table. We DON'T drop
 		-- the old artist_id/artist_name columns: artist_name still holds the only record

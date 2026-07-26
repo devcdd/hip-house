@@ -34,12 +34,14 @@ func TestBuildAlbumListQuery(t *testing.T) {
 	// year + artist filters present: placeholders must be $1..$4 in order.
 	y := 2024
 	// Multi-type (single OR ep): predicates inlined (no args), so placeholders stay year/artist/q + limit/offset.
-	sql, args := buildAlbumListQuery(&y, "abc", "dre", []string{"single", "ep"}, "tracks", false, 10, 5)
+	sql, args := buildAlbumListQuery(&y, "abc", "dre", []string{"single", "ep"}, "tracks", "hide", 10, 5)
 	if want := []any{2024, "abc", "%dre%", 10, 5}; !eq(args, want) {
 		t.Fatalf("args = %v, want %v", args, want)
 	}
 	for _, frag := range []string{
-		"year = $1", "aa.artist_id = $2", "name ILIKE $3",
+		"year = $1", "aa.artist_id = $2",
+		// q must match the album name, credited artist names, and aliases — one arg, reused placeholder.
+		"albums.name ILIKE $3", "ar.name ILIKE $3", "al ILIKE $3",
 		"(album_type='single' AND total_tracks < 3)", "(album_type='single' AND total_tracks >= 3)", " OR ",
 		"total_tracks DESC", "LIMIT $4", "OFFSET $5",
 	} {
@@ -47,13 +49,13 @@ func TestBuildAlbumListQuery(t *testing.T) {
 			t.Errorf("missing %q in %s", frag, sql)
 		}
 	}
-	// non-admin view hides soft-deleted rows.
+	// public view hides soft-deleted rows.
 	if !strings.Contains(sql, "deleted_at IS NULL") {
 		t.Errorf("expected deleted_at filter: %s", sql)
 	}
 
 	// no filters: limit/offset shift to $1/$2 (the bug this guards against), default sort by year.
-	sql, args = buildAlbumListQuery(nil, "", "", nil, "", true, 50, 0)
+	sql, args = buildAlbumListQuery(nil, "", "", nil, "", "include", 50, 0)
 	if want := []any{50, 0}; !eq(args, want) {
 		t.Fatalf("args = %v, want %v", args, want)
 	}
@@ -63,9 +65,25 @@ func TestBuildAlbumListQuery(t *testing.T) {
 	if !strings.Contains(sql, "release_date DESC NULLS LAST") {
 		t.Errorf("default sort should be by release_date: %s", sql)
 	}
-	// admin view (includeDeleted) must NOT filter deleted_at.
-	if strings.Contains(sql, "deleted_at IS NULL") {
-		t.Errorf("admin view should include deleted: %s", sql)
+	// admin browsing ("include") must NOT filter deleted_at either way.
+	if strings.Contains(sql, "deleted_at IS NULL") || strings.Contains(sql, "deleted_at IS NOT NULL") {
+		t.Errorf("include mode should not filter deleted_at: %s", sql)
+	}
+
+	// admin 삭제 목록 ("only") returns exclusively soft-deleted rows.
+	sql, _ = buildAlbumListQuery(nil, "", "", nil, "", "only", 50, 0)
+	if !strings.Contains(sql, "deleted_at IS NOT NULL") {
+		t.Errorf("only mode should filter to deleted rows: %s", sql)
+	}
+}
+
+func TestNormalizeAliases(t *testing.T) {
+	got := normalizeAliases([]string{" 블랙넛 ", "", "블넛", "블랙넛", "  "})
+	if len(got) != 2 || got[0] != "블랙넛" || got[1] != "블넛" {
+		t.Fatalf("normalizeAliases = %v", got)
+	}
+	if got := normalizeAliases(nil); len(got) != 0 {
+		t.Fatalf("nil input should yield empty slice, got %v", got)
 	}
 }
 

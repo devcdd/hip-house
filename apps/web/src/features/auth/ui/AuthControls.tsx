@@ -4,7 +4,7 @@ import { startKakaoLogin } from '@/features/auth/lib/kakao'
 import styles from './AuthControls.module.css'
 
 export function AuthControls() {
-  const { isAuthed, user, signOut } = useAuth()
+  const { isAuthed, isAdmin, user, signOut } = useAuth()
 
   if (!isAuthed) {
     return (
@@ -16,6 +16,11 @@ export function AuthControls() {
 
   return (
     <div className={styles.wrap}>
+      {isAdmin && (
+        <Link to="/admin" className={styles.link} title="관리자">
+          ⚙
+        </Link>
+      )}
       <Link to="/favorites" className={styles.link} title="즐겨찾기">
         ♥
       </Link>
