@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { RotateCcw } from 'lucide-react'
 import { AlbumCard, AlbumCardSkeleton, useAlbumFeed } from '@/entities/album'
 import { apiPost } from '@/shared/api/client'
 import { useInfiniteScroll } from '@/shared/lib/useInfiniteScroll'
@@ -30,6 +31,7 @@ export function DeletedAlbumsTab() {
               disabled={restore.isPending}
               onClick={() => restore.mutate(a.id)}
             >
+              <RotateCcw size={13} />
               복구
             </button>
             <AlbumCard album={a} />

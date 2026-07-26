@@ -63,6 +63,9 @@
   top: 8px;
   right: 8px;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
   padding: 5px 12px;
   border: none;
   border-radius: 999px;
@@ -91,14 +94,22 @@
 }
 
 .searchForm {
-  display: flex;
-  gap: 8px;
+  position: relative;
   max-width: 420px;
 }
 
+.searchIcon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+
 .searchInput {
-  flex: 1;
-  padding: 9px 16px;
+  width: 100%;
+  padding: 9px 16px 9px 37px;
   border: none;
   border-radius: 999px;
   background: var(--surface);
@@ -115,15 +126,121 @@
   outline-offset: -1px;
 }
 
-.searchButton {
-  padding: 9px 18px;
+.check {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--fg);
+  cursor: pointer;
+}
+
+.rowDelete {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
   border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.rowDelete:hover {
+  color: #e5484d;
+  background: var(--bg);
+}
+
+.rowDelete:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* --- 병합 플로팅 바 (선택 시 하단 토스트) --- */
+
+.mergeBar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 32px);
+  padding: 10px 12px 10px 18px;
   border-radius: 999px;
   background: var(--fg);
   color: var(--bg);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  z-index: 50;
+}
+
+.mergeCount {
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.mergeLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.mergeSelect {
+  max-width: 150px;
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--bg) 35%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.8rem;
+}
+
+.mergeBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: none;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 0.8rem;
+  font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
+}
+
+.mergeBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.mergeClear {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.mergeClear:hover {
+  opacity: 1;
+}
+
+.mergeError {
+  color: #ffb3b6;
+  font-size: 0.8rem;
 }
 
 .rows {

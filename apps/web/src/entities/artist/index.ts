@@ -1,6 +1,6 @@
 export type { Artist } from './model/types'
 export { useArtist } from './api/useArtist'
 export { useArtistSearch } from './api/useArtistSearch'
-export { updateArtistAliases } from './api/artistApi'
+export { updateArtistAliases, deleteArtist, mergeArtists } from './api/artistApi'
 export { ArtistCard } from './ui/ArtistCard'
 export { ArtistCardSkeleton } from './ui/ArtistCardSkeleton'
