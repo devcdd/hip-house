@@ -84,8 +84,11 @@ jobs:
       - name: Roll the stack
         env:
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/root/hiphouse' }}
+          # Isolated docker config: the job's ghcr login (short-lived GITHUB_TOKEN)
+          # must not clobber the operator's persistent PAT login in ~/.docker.
+          DOCKER_CONFIG: /tmp/hiphouse-deploy-docker
         run: |
-          mkdir -p "$DEPLOY_PATH"
+          mkdir -p "$DEPLOY_PATH" "$DOCKER_CONFIG"
           cp docker-compose.prod.yml "$DEPLOY_PATH/"
           cd "$DEPLOY_PATH"
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
