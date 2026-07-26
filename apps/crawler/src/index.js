@@ -95,23 +95,30 @@ export async function spFetch(url, tokenRef) {
   }
 }
 
-// Full artist objects (name + images) for a set of IDs, 50 per request (Spotify's cap).
-// The simplified artists embedded in albums have no images, so we batch-fetch here.
+// Full artist objects (name, images, genres, profile URL) for a set of IDs, 50 per
+// request (Spotify's cap). The simplified artists embedded in albums lack all of these.
 async function fetchArtistDetails(ids, tokenRef) {
   const details = new Map();
   for (let i = 0; i < ids.length; i += 50) {
     const data = await spFetch(`${API}/artists?ids=${ids.slice(i, i + 50).join(",")}`, tokenRef);
     for (const a of data.artists ?? [])
-      if (a) details.set(a.id, { name: a.name ?? null, image_url: a.images?.[0]?.url ?? null });
+      if (a)
+        details.set(a.id, {
+          name: a.name ?? null,
+          image_url: a.images?.[0]?.url ?? null,
+          genres: a.genres ?? [],
+          spotify_url: a.external_urls?.spotify ?? null,
+        });
   }
   return details;
 }
 
-// Fetch full details (name + image) for the given artist IDs and upsert them.
+// Fetch full details for the given artist IDs and upsert name + image + genres + URL.
 export async function enrichArtists(db, tokenRef, ids) {
   if (!ids.length) return;
   const details = await fetchArtistDetails(ids, tokenRef);
-  for (const [id, d] of details) await upsertArtist(db, id, d.name, d.image_url);
+  for (const [id, d] of details)
+    await upsertArtist(db, id, d.name, { imageUrl: d.image_url, genres: d.genres, spotifyUrl: d.spotify_url });
 }
 
 export async function fetchArtistAlbums(artistId, tokenRef) {
@@ -126,14 +133,16 @@ export async function fetchArtistAlbums(artistId, tokenRef) {
   return [...albums.values()];
 }
 
-// image_url only overwrites when a new one is supplied — COALESCE keeps an existing
-// image if this call has none (e.g. the inline per-album link, which lacks images).
-export const upsertArtist = (db, id, name, imageUrl = null) =>
+// Extra fields (image/genres/spotify_url) only overwrite when supplied — COALESCE keeps
+// existing values when this call has none (e.g. the inline per-album link carries name only).
+export const upsertArtist = (db, id, name, { imageUrl = null, genres = null, spotifyUrl = null } = {}) =>
   db.query(
-    `INSERT INTO artists(id,name,image_url) VALUES($1,$2,$3)
+    `INSERT INTO artists(id,name,image_url,genres,spotify_url) VALUES($1,$2,$3,$4,$5)
      ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name,
-       image_url=COALESCE(EXCLUDED.image_url, artists.image_url)`,
-    [id, name, imageUrl]
+       image_url=COALESCE(EXCLUDED.image_url, artists.image_url),
+       genres=COALESCE(EXCLUDED.genres, artists.genres),
+       spotify_url=COALESCE(EXCLUDED.spotify_url, artists.spotify_url)`,
+    [id, name, imageUrl, genres, spotifyUrl]
   );
 
 const upsertAlbumRow = (db, r) =>
@@ -166,8 +175,10 @@ export async function openDb() {
   const db = new pg.Client({ connectionString: DATABASE_URL });
   await db.connect();
   await db.query(`
-    CREATE TABLE IF NOT EXISTS artists (id TEXT PRIMARY KEY, name TEXT, image_url TEXT);
+    CREATE TABLE IF NOT EXISTS artists (id TEXT PRIMARY KEY, name TEXT, image_url TEXT, genres TEXT[], spotify_url TEXT);
     ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS image_url TEXT;
+    ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS genres TEXT[];
+    ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS spotify_url TEXT;
     CREATE TABLE IF NOT EXISTS albums (
       id TEXT PRIMARY KEY, name TEXT NOT NULL,
       release_date TEXT, year INTEGER, album_type TEXT,

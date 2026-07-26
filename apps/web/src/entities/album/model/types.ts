@@ -3,6 +3,8 @@ export interface AlbumArtist {
   id: string
   name: string | null
   image_url: string | null
+  genres: string[] | null
+  spotify_url: string | null
 }
 
 export interface Album {

@@ -26,9 +26,11 @@ func typeCond(t string) string {
 
 // AlbumArtist is one credited artist on an album (via the album_artists join).
 type AlbumArtist struct {
-	ID       string  `json:"id"`
-	Name     *string `json:"name"`
-	ImageURL *string `json:"image_url"`
+	ID         string   `json:"id"`
+	Name       *string  `json:"name"`
+	ImageURL   *string  `json:"image_url"`
+	Genres     []string `json:"genres"`
+	SpotifyURL *string  `json:"spotify_url"`
 }
 
 type Album struct {
@@ -57,7 +59,7 @@ const albumSelectCols = albumCols + `,
 	     ELSE album_type END AS type_label,
 	deleted_at::text AS deleted_at,
 	COALESCE((
-		SELECT json_agg(json_build_object('id', ar.id, 'name', ar.name, 'image_url', ar.image_url) ORDER BY aa.position)
+		SELECT json_agg(json_build_object('id', ar.id, 'name', ar.name, 'image_url', ar.image_url, 'genres', ar.genres, 'spotify_url', ar.spotify_url) ORDER BY aa.position)
 		FROM album_artists aa JOIN artists ar ON ar.id = aa.artist_id
 		WHERE aa.album_id = albums.id
 	), '[]'::json) AS artists`
