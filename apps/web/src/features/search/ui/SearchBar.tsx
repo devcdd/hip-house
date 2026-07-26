@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { Search } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { useDebouncedValue } from '@/shared/lib/useDebouncedValue'
 import styles from './SearchBar.module.css'
 
@@ -22,7 +22,7 @@ export function SearchBar() {
       p.set('q', term)
       navigate(`/search?${p.toString()}`, { replace: onSearchPage })
     } else if (onSearchPage) {
-      navigate('/search', { replace: true })
+      navigate('/', { replace: true }) // cleared → back to the default album list
     }
   }, [debounced]) // params/location are read fresh on each debounce tick
 
@@ -42,6 +42,11 @@ export function SearchBar() {
         placeholder="앨범·아티스트 검색"
         aria-label="검색"
       />
+      {q && (
+        <button type="button" className={styles.clear} onClick={() => setQ('')} aria-label="검색어 지우기">
+          <X size={14} />
+        </button>
+      )}
     </form>
   )
 }

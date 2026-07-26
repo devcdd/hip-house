@@ -15,12 +15,33 @@
 
 .input {
   width: 100%;
-  padding: 9px 16px 9px 37px;
+  padding: 9px 34px 9px 37px;
   border: none;
   border-radius: 999px;
   background: var(--surface);
   color: var(--fg);
   font-size: 0.85rem;
+}
+
+.clear {
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.clear:hover {
+  color: var(--fg);
+  background: var(--bg);
 }
 
 .input::placeholder {

@@ -127,6 +127,91 @@
   outline-offset: -1px;
 }
 
+.clearBtn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.clearBtn:hover {
+  color: var(--fg);
+  background: var(--bg);
+}
+
+/* --- 크롤링 탭 --- */
+
+.crawlControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.crawlControls .searchForm {
+  flex: 1;
+  min-width: 220px;
+}
+
+.keyToggle {
+  display: flex;
+  gap: 6px;
+}
+
+.dbBadge {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dbBadgeHas {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.crawlBtn {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 999px;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.crawlBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.crawlMsg {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: 0.85rem;
+}
+
 .check {
   flex: none;
   width: 16px;
