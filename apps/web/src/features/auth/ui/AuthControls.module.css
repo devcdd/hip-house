@@ -18,13 +18,17 @@
 }
 
 .link {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
   color: var(--muted);
-  font-size: 0.85rem;
-  font-weight: 600;
 }
 
 .link:hover {
   color: var(--fg);
+  background: var(--surface);
 }
 
 .name {

@@ -3,13 +3,28 @@
   top: 0;
   z-index: 10;
   display: flex;
+  flex-wrap: wrap; /* lets the search bar drop to its own row on mobile */
   align-items: center;
   gap: 24px;
+  row-gap: 10px;
   padding: 16px 24px;
   max-width: 1200px;
   margin: 0 auto;
   background: color-mix(in srgb, var(--bg) 88%, transparent);
   backdrop-filter: blur(8px);
+}
+
+@media (max-width: 640px) {
+  .header {
+    gap: 14px;
+    row-gap: 10px;
+    padding: 12px 16px;
+  }
+
+  /* brand pushes the icon controls to the right edge once search wraps below */
+  .brand {
+    margin-right: auto;
+  }
 }
 
 .brand {

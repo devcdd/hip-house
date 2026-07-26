@@ -1,10 +1,18 @@
 .tabs {
   display: flex;
-  flex-wrap: wrap;
   gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0;
+  -webkit-overflow-scrolling: touch; /* momentum swipe on iOS */
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .tab {
+  flex: 0 0 auto;
   padding: 8px 18px;
   border: none;
   border-radius: 999px;

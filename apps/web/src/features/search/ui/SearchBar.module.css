@@ -1,11 +1,21 @@
 .form {
   flex: 1;
   max-width: 320px;
+  position: relative;
+}
+
+.icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
 }
 
 .input {
   width: 100%;
-  padding: 9px 16px;
+  padding: 9px 16px 9px 37px;
   border: none;
   border-radius: 999px;
   background: var(--surface);
@@ -20,4 +30,13 @@
 .input:focus {
   outline: 2px solid var(--muted);
   outline-offset: -1px;
+}
+
+/* On narrow screens the input gets squeezed — wrap to its own full-width row. */
+@media (max-width: 640px) {
+  .form {
+    order: 4;
+    flex-basis: 100%;
+    max-width: none;
+  }
 }

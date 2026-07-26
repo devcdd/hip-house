@@ -1,3 +1,4 @@
+import { Moon, Sun } from 'lucide-react'
 import { useTheme } from '../model/useTheme'
 import styles from './ThemeToggle.module.css'
 
@@ -11,7 +12,7 @@ export function ThemeToggle() {
       aria-label={resolved === 'dark' ? '라이트 모드로' : '다크 모드로'}
       title={resolved === 'dark' ? '라이트 모드로' : '다크 모드로'}
     >
-      {resolved === 'dark' ? '☀' : '☾'}
+      {resolved === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
     </button>
   )
 }
