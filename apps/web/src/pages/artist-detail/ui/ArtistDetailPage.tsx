@@ -11,7 +11,9 @@ export function ArtistDetailPage() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <div className={styles.avatar}>{name.slice(0, 1)}</div>
+        <div className={styles.avatar}>
+          {artist?.image_url ? <img src={artist.image_url} alt={name} /> : name.slice(0, 1)}
+        </div>
         <h1 className={styles.name}>{isLoading ? '불러오는 중…' : name}</h1>
       </header>
 
