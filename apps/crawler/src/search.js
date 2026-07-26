@@ -6,9 +6,10 @@ import { createInterface } from "node:readline/promises";
 import { getToken, spFetch, openDb, fetchArtistAlbums, upsertAlbum, albumArtists, enrichArtists } from "./index.js";
 
 const API = "https://api.spotify.com/v1";
-const names = process.argv.slice(2);
+// Flags (e.g. --key=second, picked up inside getToken) are not artist names.
+const names = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 if (!names.length) {
-  console.error('usage: node src/search.js "artist name" ["name2" ...]');
+  console.error('usage: node src/search.js [--key=first|second] "artist name" ["name2" ...]');
   process.exit(1);
 }
 

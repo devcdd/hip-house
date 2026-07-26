@@ -52,14 +52,32 @@ export function albumArtists(album) {
 }
 
 // ---- Spotify ----
-export async function getToken() {
-  const id = process.env.SPOTIFY_CLIENT_ID;
-  const secret = process.env.SPOTIFY_CLIENT_SECRET;
-  if (!id || !secret) {
-    console.error("Missing SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET.");
-    console.error("Create a free app at https://developer.spotify.com/dashboard, copy .env.example to .env, fill it in.");
-    process.exit(1);
+
+// Which credential pair to use: --key=first / --key=second (or SPOTIFY_KEY env).
+// No key → unprefixed SPOTIFY_CLIENT_* first, then FIRST_-prefixed as fallback.
+export function credKey() {
+  const arg = process.argv.find((a) => a.startsWith("--key="));
+  return (arg ? arg.slice(6) : (process.env.SPOTIFY_KEY ?? "")).trim().toLowerCase();
+}
+
+function resolveCreds(key = credKey()) {
+  const prefixes = key ? [key.toUpperCase() + "_"] : ["", "FIRST_"];
+  for (const p of prefixes) {
+    const id = process.env[p + "SPOTIFY_CLIENT_ID"];
+    const secret = process.env[p + "SPOTIFY_CLIENT_SECRET"];
+    if (id && secret) {
+      console.error(`spotify creds: ${p ? p + "SPOTIFY_CLIENT_*" : "SPOTIFY_CLIENT_* (default)"}`);
+      return { id, secret };
+    }
   }
+  const want = key ? `${key.toUpperCase()}_SPOTIFY_CLIENT_ID / _SECRET` : "SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET (or FIRST_-prefixed)";
+  console.error(`Missing Spotify credentials for key "${key || "default"}" — set ${want} in .env.`);
+  console.error("Create a free app at https://developer.spotify.com/dashboard, copy .env.example to .env, fill it in.");
+  process.exit(1);
+}
+
+export async function getToken() {
+  const { id, secret } = resolveCreds();
   const res = await fetch(TOKEN_URL, {
     method: "POST",
     headers: {
