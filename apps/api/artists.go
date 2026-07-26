@@ -10,13 +10,14 @@ import (
 )
 
 type Artist struct {
-	ID   string  `json:"id" db:"id"`
-	Name *string `json:"name" db:"name"`
+	ID       string  `json:"id" db:"id"`
+	Name     *string `json:"name" db:"name"`
+	ImageURL *string `json:"image_url" db:"image_url"`
 }
 
 func (s *server) listArtists(w http.ResponseWriter, r *http.Request) {
 	limit, offset := clampPage(r)
-	sql := "SELECT id,name FROM artists WHERE 1=1"
+	sql := "SELECT id,name,image_url FROM artists WHERE 1=1"
 	var args []any
 	if q := r.URL.Query().Get("q"); q != "" {
 		args = append(args, "%"+q+"%")
@@ -40,7 +41,7 @@ func (s *server) listArtists(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) getArtist(w http.ResponseWriter, r *http.Request) {
-	rows, err := s.db.Query(r.Context(), "SELECT id,name FROM artists WHERE id=$1", r.PathValue("id"))
+	rows, err := s.db.Query(r.Context(), "SELECT id,name,image_url FROM artists WHERE id=$1", r.PathValue("id"))
 	if err != nil {
 		writeErr(w, 500, err.Error())
 		return
@@ -66,7 +67,7 @@ func (s *server) createArtist(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, "id is required")
 		return
 	}
-	_, err := s.db.Exec(r.Context(), "INSERT INTO artists(id,name) VALUES($1,$2)", a.ID, a.Name)
+	_, err := s.db.Exec(r.Context(), "INSERT INTO artists(id,name,image_url) VALUES($1,$2,$3)", a.ID, a.Name, a.ImageURL)
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 		writeErr(w, 409, "artist id already exists")
@@ -85,7 +86,7 @@ func (s *server) updateArtist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.ID = r.PathValue("id")
-	tag, err := s.db.Exec(r.Context(), "UPDATE artists SET name=$2 WHERE id=$1", a.ID, a.Name)
+	tag, err := s.db.Exec(r.Context(), "UPDATE artists SET name=$2,image_url=$3 WHERE id=$1", a.ID, a.Name, a.ImageURL)
 	if err != nil {
 		writeErr(w, 500, err.Error())
 		return

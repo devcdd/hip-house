@@ -95,13 +95,23 @@ export async function spFetch(url, tokenRef) {
   }
 }
 
-async function fetchArtistNames(ids, tokenRef) {
-  const names = new Map();
+// Full artist objects (name + images) for a set of IDs, 50 per request (Spotify's cap).
+// The simplified artists embedded in albums have no images, so we batch-fetch here.
+async function fetchArtistDetails(ids, tokenRef) {
+  const details = new Map();
   for (let i = 0; i < ids.length; i += 50) {
     const data = await spFetch(`${API}/artists?ids=${ids.slice(i, i + 50).join(",")}`, tokenRef);
-    for (const a of data.artists ?? []) if (a) names.set(a.id, a.name);
+    for (const a of data.artists ?? [])
+      if (a) details.set(a.id, { name: a.name ?? null, image_url: a.images?.[0]?.url ?? null });
   }
-  return names;
+  return details;
+}
+
+// Fetch full details (name + image) for the given artist IDs and upsert them.
+export async function enrichArtists(db, tokenRef, ids) {
+  if (!ids.length) return;
+  const details = await fetchArtistDetails(ids, tokenRef);
+  for (const [id, d] of details) await upsertArtist(db, id, d.name, d.image_url);
 }
 
 export async function fetchArtistAlbums(artistId, tokenRef) {
@@ -116,8 +126,15 @@ export async function fetchArtistAlbums(artistId, tokenRef) {
   return [...albums.values()];
 }
 
-export const upsertArtist = (db, id, name) =>
-  db.query("INSERT INTO artists(id,name) VALUES($1,$2) ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name", [id, name]);
+// image_url only overwrites when a new one is supplied — COALESCE keeps an existing
+// image if this call has none (e.g. the inline per-album link, which lacks images).
+export const upsertArtist = (db, id, name, imageUrl = null) =>
+  db.query(
+    `INSERT INTO artists(id,name,image_url) VALUES($1,$2,$3)
+     ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name,
+       image_url=COALESCE(EXCLUDED.image_url, artists.image_url)`,
+    [id, name, imageUrl]
+  );
 
 const upsertAlbumRow = (db, r) =>
   db.query(
@@ -149,7 +166,8 @@ export async function openDb() {
   const db = new pg.Client({ connectionString: DATABASE_URL });
   await db.connect();
   await db.query(`
-    CREATE TABLE IF NOT EXISTS artists (id TEXT PRIMARY KEY, name TEXT);
+    CREATE TABLE IF NOT EXISTS artists (id TEXT PRIMARY KEY, name TEXT, image_url TEXT);
+    ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS image_url TEXT;
     CREATE TABLE IF NOT EXISTS albums (
       id TEXT PRIMARY KEY, name TEXT NOT NULL,
       release_date TEXT, year INTEGER, album_type TEXT,
@@ -181,19 +199,25 @@ async function main() {
   const tokenRef = { value: await getToken() };
   const db = await openDb();
 
-  const names = await fetchArtistNames(ids, tokenRef);
-  for (const id of ids) await upsertArtist(db, id, names.get(id) ?? null);
+  const rosterDetails = await fetchArtistDetails(ids, tokenRef);
 
   let total = 0;
+  const credited = new Set(ids); // roster + every artist ID seen across crawled albums (featured incl.)
   for (const id of ids) {
     const albums = await fetchArtistAlbums(id, tokenRef);
-    for (const al of albums) await upsertAlbum(db, al);
+    for (const al of albums) {
+      await upsertAlbum(db, al);
+      for (const a of albumArtists(al)) credited.add(a.id);
+    }
     total += albums.length;
-    console.log(`  ${names.get(id) ?? id}: ${albums.length} albums`);
+    console.log(`  ${rosterDetails.get(id)?.name ?? id}: ${albums.length} albums`);
   }
 
+  // Backfill name + image for every credited artist (featured included) via the full endpoint.
+  await enrichArtists(db, tokenRef, [...credited]);
+
   const byYear = (await db.query("SELECT year, COUNT(*)::int n FROM albums GROUP BY year ORDER BY year DESC")).rows;
-  console.log(`\n${total} album rows / ${ids.length} artists → ${DATABASE_URL}`);
+  console.log(`\n${total} album rows / ${credited.size} artists → ${DATABASE_URL}`);
   console.log("by year:", byYear.map((r) => `${r.year}:${r.n}`).join("  "));
   await db.end();
 }

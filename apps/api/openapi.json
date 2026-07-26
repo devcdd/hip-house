@@ -166,7 +166,8 @@
         "required": ["id"],
         "properties": {
           "id": { "type": "string", "example": "1uNFoZAHBGtllmzznpCI3s" },
-          "name": { "type": "string", "nullable": true, "example": "Artist Name" }
+          "name": { "type": "string", "nullable": true, "example": "Artist Name" },
+          "image_url": { "type": "string", "nullable": true, "description": "Spotify 아티스트 사진 (없을 수 있음)" }
         }
       },
       "Error": {

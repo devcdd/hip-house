@@ -3,7 +3,7 @@
 // Run: node --env-file-if-exists=.env src/search.js "artist name" ["name2" ...]
 
 import { createInterface } from "node:readline/promises";
-import { getToken, spFetch, openDb, fetchArtistAlbums, upsertArtist, upsertAlbum } from "./index.js";
+import { getToken, spFetch, openDb, fetchArtistAlbums, upsertAlbum, albumArtists, enrichArtists } from "./index.js";
 
 const API = "https://api.spotify.com/v1";
 const names = process.argv.slice(2);
@@ -54,12 +54,18 @@ if (!picked.length) {
 // 3) save + crawl albums
 const db = await openDb();
 let total = 0;
+const credited = new Set(); // picked + every featured artist across their albums
 for (const a of picked) {
-  await upsertArtist(db, a.id, a.name);
+  credited.add(a.id);
   const albums = await fetchArtistAlbums(a.id, tokenRef);
-  for (const al of albums) await upsertAlbum(db, al);
+  for (const al of albums) {
+    await upsertAlbum(db, al);
+    for (const c of albumArtists(al)) credited.add(c.id);
+  }
   total += albums.length;
   console.log(`  ${a.name}: ${albums.length} albums`);
 }
+// Backfill name + image for every credited artist (featured included) via the full endpoint.
+await enrichArtists(db, tokenRef, [...credited]);
 console.log(`\n${picked.length} artists / ${total} album rows saved`);
 await db.end();

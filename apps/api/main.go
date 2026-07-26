@@ -112,6 +112,7 @@ func (s *server) ensureAuthSchema(ctx context.Context) error {
 			PRIMARY KEY (album_id, artist_id)
 		);
 		CREATE INDEX IF NOT EXISTS idx_album_artists_artist ON album_artists(artist_id);
+		ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS image_url TEXT;
 
 		-- Backfill the legacy single-artist column into the join table. We DON'T drop
 		-- the old artist_id/artist_name columns: artist_name still holds the only record
