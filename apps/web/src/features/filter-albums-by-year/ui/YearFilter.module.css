@@ -28,7 +28,8 @@
   color: var(--fg);
 }
 
-.active {
+.active,
+.active:hover {
   background: var(--fg);
   color: var(--bg);
 }
