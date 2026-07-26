@@ -138,6 +138,33 @@
         }
       }
     },
+    "/artists/merge": {
+      "post": {
+        "tags": ["artists"],
+        "summary": "아티스트 병합 (관리자 전용)",
+        "description": "merged_ids의 앨범 크레딧을 master로 이동하고, 이름·연관검색어를 master의 연관검색어로 흡수한 뒤 중복 아티스트를 삭제한다.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["master_id", "merged_ids"],
+                "properties": {
+                  "master_id": { "type": "string" },
+                  "merged_ids": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "병합된 master 아티스트", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Artist" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
     "/artists/{id}/aliases": {
       "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
       "put": {

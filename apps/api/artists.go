@@ -154,7 +154,19 @@ func (s *server) updateArtistAliases(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) deleteArtist(w http.ResponseWriter, r *http.Request) {
-	tag, err := s.db.Exec(r.Context(), "DELETE FROM artists WHERE id=$1", r.PathValue("id"))
+	tx, err := s.db.Begin(r.Context())
+	if err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	// Drop the artist's album credits too — the join table has no FK.
+	if _, err := tx.Exec(r.Context(), "DELETE FROM album_artists WHERE artist_id=$1", r.PathValue("id")); err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	tag, err := tx.Exec(r.Context(), "DELETE FROM artists WHERE id=$1", r.PathValue("id"))
 	if err != nil {
 		writeErr(w, 500, err.Error())
 		return
@@ -163,5 +175,129 @@ func (s *server) deleteArtist(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 404, "artist not found")
 		return
 	}
+	if err := tx.Commit(r.Context()); err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
 	w.WriteHeader(204)
+}
+
+// mergeArtists folds duplicate artists into one: album credits move to the
+// master, the duplicates' names+aliases become the master's aliases (so old
+// search terms keep matching), then the duplicate rows are deleted.
+func (s *server) mergeArtists(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		MasterID  string   `json:"master_id"`
+		MergedIDs []string `json:"merged_ids"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	var merged []string
+	for _, id := range body.MergedIDs {
+		if id != "" && id != body.MasterID {
+			merged = append(merged, id)
+		}
+	}
+	if body.MasterID == "" || len(merged) == 0 {
+		writeErr(w, 400, "master_id and at least one other merged id are required")
+		return
+	}
+
+	tx, err := s.db.Begin(r.Context())
+	if err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	var masterName *string
+	var masterAliases []string
+	err = tx.QueryRow(r.Context(), "SELECT name, aliases FROM artists WHERE id=$1", body.MasterID).
+		Scan(&masterName, &masterAliases)
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeErr(w, 404, "master artist not found")
+		return
+	}
+	if err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+
+	// Absorbed artists' names + aliases → master aliases (minus the master's own name).
+	rows, err := tx.Query(r.Context(), "SELECT name, aliases FROM artists WHERE id = ANY($1)", merged)
+	if err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	extra := append([]string{}, masterAliases...)
+	for rows.Next() {
+		var name *string
+		var aliases []string
+		if err := rows.Scan(&name, &aliases); err != nil {
+			rows.Close()
+			writeErr(w, 500, err.Error())
+			return
+		}
+		if name != nil {
+			extra = append(extra, *name)
+		}
+		extra = append(extra, aliases...)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	aliases := normalizeAliases(extra)
+	if masterName != nil {
+		kept := aliases[:0]
+		for _, a := range aliases {
+			if a != *masterName {
+				kept = append(kept, a)
+			}
+		}
+		aliases = kept
+	}
+
+	// Move credits one duplicate at a time: the guard skips albums where the
+	// master is already credited, and the leftover duplicate rows are dropped.
+	for _, id := range merged {
+		if _, err := tx.Exec(r.Context(),
+			`UPDATE album_artists SET artist_id=$1 WHERE artist_id=$2
+			 AND NOT EXISTS (SELECT 1 FROM album_artists m WHERE m.album_id = album_artists.album_id AND m.artist_id = $1)`,
+			body.MasterID, id); err != nil {
+			writeErr(w, 500, err.Error())
+			return
+		}
+		if _, err := tx.Exec(r.Context(), "DELETE FROM album_artists WHERE artist_id=$1", id); err != nil {
+			writeErr(w, 500, err.Error())
+			return
+		}
+	}
+
+	if _, err := tx.Exec(r.Context(), "UPDATE artists SET aliases=$2 WHERE id=$1", body.MasterID, aliases); err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	if _, err := tx.Exec(r.Context(), "DELETE FROM artists WHERE id = ANY($1)", merged); err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+
+	out, err := s.db.Query(r.Context(), "SELECT "+artistCols+" FROM artists WHERE id=$1", body.MasterID)
+	if err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	a, err := pgx.CollectExactlyOneRow(out, pgx.RowToStructByName[Artist])
+	if err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	writeJSON(w, 200, a)
 }

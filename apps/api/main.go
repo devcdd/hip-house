@@ -77,6 +77,7 @@ func main() {
 	mux.HandleFunc("GET /artists/{id}", s.getArtist)
 	mux.HandleFunc("PUT /artists/{id}", s.requireAdmin(s.updateArtist))
 	mux.HandleFunc("PUT /artists/{id}/aliases", s.requireAdmin(s.updateArtistAliases))
+	mux.HandleFunc("POST /artists/merge", s.requireAdmin(s.mergeArtists))
 	mux.HandleFunc("DELETE /artists/{id}", s.requireAdmin(s.deleteArtist))
 
 	mux.HandleFunc("GET /openapi.json", serveSpec)
