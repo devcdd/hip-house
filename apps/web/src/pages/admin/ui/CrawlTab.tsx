@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Download, Search, X } from 'lucide-react'
 import { useDebouncedValue } from '@/shared/lib/useDebouncedValue'
-import { crawlArtist, searchSpotifyArtists, type SpotifyKey } from '../api/spotifyAdminApi'
+import { crawlArtist, fetchSpotifyKeys, searchSpotifyArtists } from '../api/spotifyAdminApi'
 import styles from './AdminPage.module.css'
 
 const nf = new Intl.NumberFormat('ko-KR')
@@ -11,7 +11,12 @@ const nf = new Intl.NumberFormat('ko-KR')
 // 앨범을 서버가 수집해 저장한다 (artist.sh의 웹 버전).
 export function CrawlTab() {
   const qc = useQueryClient()
-  const [key, setKey] = useState<SpotifyKey>('first')
+  // Configured credential pairs on the server (first/second/third/... env pairs).
+  const keysQuery = useQuery({ queryKey: ['spotify-keys'], queryFn: fetchSpotifyKeys, staleTime: Infinity })
+  const keys = keysQuery.data ?? []
+  const [picked, setPicked] = useState('')
+  const key = picked && keys.includes(picked) ? picked : (keys[0] ?? '') // '' = server default pair
+
   const [input, setInput] = useState('')
   const q = useDebouncedValue(input.trim(), 350)
   const [message, setMessage] = useState('')
@@ -41,20 +46,22 @@ export function CrawlTab() {
   return (
     <div className={styles.aliasWrap}>
       <div className={styles.crawlControls}>
-        <div className={styles.keyToggle} role="radiogroup" aria-label="Spotify API 키 선택">
-          {(['first', 'second'] as const).map((k) => (
-            <button
-              key={k}
-              type="button"
-              role="radio"
-              aria-checked={key === k}
-              className={key === k ? `${styles.tab} ${styles.active}` : styles.tab}
-              onClick={() => setKey(k)}
-            >
-              {k.toUpperCase()}
-            </button>
-          ))}
-        </div>
+        {keys.length > 0 && (
+          <div className={styles.keyToggle} role="radiogroup" aria-label="Spotify API 키 선택">
+            {keys.map((k) => (
+              <button
+                key={k}
+                type="button"
+                role="radio"
+                aria-checked={key === k}
+                className={key === k ? `${styles.tab} ${styles.active}` : styles.tab}
+                onClick={() => setPicked(k)}
+              >
+                {k.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className={styles.searchForm}>
           <Search size={15} className={styles.searchIcon} aria-hidden />

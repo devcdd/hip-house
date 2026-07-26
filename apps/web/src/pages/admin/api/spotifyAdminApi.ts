@@ -1,7 +1,13 @@
 import { apiGet, apiPost } from '@/shared/api/client'
 
-// Which Spotify app credentials the server should use (FIRST_/SECOND_ env pairs).
-export type SpotifyKey = 'first' | 'second'
+// Which Spotify app credentials the server should use. Any <PREFIX>_SPOTIFY_CLIENT_*
+// env pair on the server is a valid key ("first", "second", "third", ...);
+// fetchSpotifyKeys reports the configured ones. '' = server default pair.
+export type SpotifyKey = string
+
+export function fetchSpotifyKeys(): Promise<string[]> {
+  return apiGet<string[]>('/admin/spotify/keys')
+}
 
 export interface SpotifyArtistHit {
   id: string

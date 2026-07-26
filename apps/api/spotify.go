@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -197,7 +198,34 @@ func strPtr(s string) *string {
 	return &s
 }
 
+// configuredSpotifyKeys scans the environment for <PREFIX>_SPOTIFY_CLIENT_ID/SECRET
+// pairs and returns the lowercase prefixes, sorted — so adding THIRD_ (or any
+// name) to .env makes it selectable without code changes.
+func configuredSpotifyKeys() []string {
+	keys := []string{}
+	for _, kv := range os.Environ() {
+		name, _, ok := strings.Cut(kv, "=")
+		if !ok {
+			continue
+		}
+		p, found := strings.CutSuffix(name, "_SPOTIFY_CLIENT_ID")
+		if !found || p == "" {
+			continue
+		}
+		if os.Getenv(p+"_SPOTIFY_CLIENT_SECRET") != "" {
+			keys = append(keys, strings.ToLower(p))
+		}
+	}
+	sort.Strings(keys)
+	return keys
+}
+
 // ---- Handlers ----
+
+// GET /admin/spotify/keys — which credential pairs exist; the web toggle renders these.
+func (s *server) adminSpotifyKeys(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, 200, configuredSpotifyKeys())
+}
 
 // GET /admin/spotify/artists?q=&key= — Spotify artist candidates plus how many
 // albums each already has in OUR db (free local lookup; Spotify search carries

@@ -106,6 +106,20 @@ func TestSpotifyCreds(t *testing.T) {
 	if id, _, _ := spotifyCreds(""); id != "one" {
 		t.Fatalf("fallback = %q, want one", id)
 	}
+
+	// any prefix works — THIRD_ (or anything) is selectable once its pair exists
+	t.Setenv("THIRD_SPOTIFY_CLIENT_ID", "three")
+	t.Setenv("THIRD_SPOTIFY_CLIENT_SECRET", "s3")
+	if id, _, _ := spotifyCreds("third"); id != "three" {
+		t.Fatalf("third = %q", id)
+	}
+	keys := configuredSpotifyKeys()
+	joined := strings.Join(keys, ",")
+	for _, want := range []string{"first", "second", "third"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("configuredSpotifyKeys() = %v, missing %q", keys, want)
+		}
+	}
 }
 
 func TestYearOf(t *testing.T) {

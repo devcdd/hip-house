@@ -138,6 +138,16 @@
         }
       }
     },
+    "/admin/spotify/keys": {
+      "get": {
+        "tags": ["artists"],
+        "summary": "설정된 Spotify 자격증명 키 목록 (관리자)",
+        "description": "<PREFIX>_SPOTIFY_CLIENT_ID/SECRET 쌍이 존재하는 접두사들을 소문자로 반환 (예: [\"first\",\"second\",\"third\"]).",
+        "responses": {
+          "200": { "description": "키 배열", "content": { "application/json": { "schema": { "type": "array", "items": { "type": "string" } } } } }
+        }
+      }
+    },
     "/admin/spotify/artists": {
       "get": {
         "tags": ["artists"],
