@@ -91,6 +91,7 @@
 }
 
 .rating {
+  user-select: none;
   display: inline-flex;
   align-items: center;
   gap: 3px;

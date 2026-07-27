@@ -40,3 +40,13 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+/* Chips, tabs and badges are things you click, not text you copy — dragging
+   across them should never leave a highlight. One rule instead of the same
+   declaration in every filter's CSS module. */
+button,
+[role='tab'],
+[role='option'] {
+  user-select: none;
+  -webkit-user-select: none; /* iOS Safari */
+}

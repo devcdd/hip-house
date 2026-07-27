@@ -5,6 +5,9 @@
   min-width: 0;
   max-width: 100%;
   padding: 2px 0;
+  /* Dragging the strip would otherwise highlight the year labels. */
+  user-select: none;
+  -webkit-user-select: none; /* iOS Safari */
 }
 
 /* slidesPerView="auto" → each slide sizes to its chip. */
