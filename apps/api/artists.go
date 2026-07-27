@@ -20,14 +20,23 @@ type Artist struct {
 	// English artist name). Never written by the crawler.
 	Aliases []string `json:"aliases" db:"aliases"`
 	// Spotify follower count, crawler/enrich-owned; null until first enriched.
+	// Kept for the admin refresh flow — the UI shows FollowerCount instead.
 	Followers *int `json:"followers" db:"followers"`
+	// 서비스 내부 팔로워 수 — follows 집계. Read-only output column.
+	FollowerCount int `json:"follower_count" db:"follower_count"`
 }
 
 const artistCols = "id,name,image_url,genres,spotify_url,aliases,followers"
 
+// artistSelectCols is artistCols plus the computed follower count; every artist
+// read uses it, while artistCols alone stays valid as an INSERT column list.
+// The subquery alias is fl (not f) so it survives inside listFollows' join.
+const artistSelectCols = artistCols +
+	",(SELECT COUNT(*) FROM follows fl WHERE fl.artist_id=artists.id)::int AS follower_count"
+
 func (s *server) listArtists(w http.ResponseWriter, r *http.Request) {
 	limit, offset := clampPage(r)
-	sql := "SELECT " + artistCols + " FROM artists WHERE 1=1"
+	sql := "SELECT " + artistSelectCols + " FROM artists WHERE 1=1"
 	var args []any
 	// q matches the artist name OR any admin-curated alias (연관검색어), so a
 	// Korean query finds artists stored under an English name.
@@ -55,7 +64,7 @@ func (s *server) listArtists(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) getArtist(w http.ResponseWriter, r *http.Request) {
-	rows, err := s.db.Query(r.Context(), "SELECT "+artistCols+" FROM artists WHERE id=$1", r.PathValue("id"))
+	rows, err := s.db.Query(r.Context(), "SELECT "+artistSelectCols+" FROM artists WHERE id=$1", r.PathValue("id"))
 	if err != nil {
 		writeErr(w, 500, err.Error())
 		return
@@ -137,7 +146,7 @@ func (s *server) updateArtistAliases(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows, err := s.db.Query(r.Context(),
-		"UPDATE artists SET aliases=$2 WHERE id=$1 RETURNING "+artistCols,
+		"UPDATE artists SET aliases=$2 WHERE id=$1 RETURNING "+artistSelectCols,
 		r.PathValue("id"), normalizeAliases(body.Aliases))
 	if err != nil {
 		writeErr(w, 500, err.Error())
@@ -365,7 +374,7 @@ func (s *server) mergeArtists(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := s.db.Query(r.Context(), "SELECT "+artistCols+" FROM artists WHERE id=$1", body.MasterID)
+	out, err := s.db.Query(r.Context(), "SELECT "+artistSelectCols+" FROM artists WHERE id=$1", body.MasterID)
 	if err != nil {
 		writeErr(w, 500, err.Error())
 		return

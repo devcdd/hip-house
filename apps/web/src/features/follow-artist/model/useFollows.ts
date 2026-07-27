@@ -19,8 +19,10 @@ export function useToggleFollow() {
   return useMutation({
     mutationFn: ({ id, following }: { id: string; following: boolean }) =>
       following ? removeFollow(id) : addFollow(id),
-    onSuccess: (_data, { following }) => {
+    onSuccess: (_data, { id, following }) => {
       qc.invalidateQueries({ queryKey: ['follows'] })
+      // The artist detail header shows follower_count, so refetch it too.
+      qc.invalidateQueries({ queryKey: ['artist', id] })
       toast(following ? '팔로우를 해제했습니다' : '팔로우했습니다')
     },
     onError: () => toast('팔로우 처리에 실패했습니다', 'error'),

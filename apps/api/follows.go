@@ -9,9 +9,9 @@ import (
 // listFollows returns the artists the caller follows, most recently followed first.
 func (s *server) listFollows(w http.ResponseWriter, r *http.Request) {
 	rows, err := s.db.Query(r.Context(),
-		// No alias on artists: artistCols is unqualified and follows shares none
-		// of those column names, so the join stays unambiguous.
-		"SELECT "+artistCols+" FROM artists JOIN follows f ON f.artist_id=artists.id "+
+		// No alias on artists: artistSelectCols is unqualified and follows shares
+		// none of those column names, so the join stays unambiguous.
+		"SELECT "+artistSelectCols+" FROM artists JOIN follows f ON f.artist_id=artists.id "+
 			"WHERE f.user_id=$1 ORDER BY f.created_at DESC", currentUser(r).ID)
 	if err != nil {
 		writeErr(w, 500, err.Error())

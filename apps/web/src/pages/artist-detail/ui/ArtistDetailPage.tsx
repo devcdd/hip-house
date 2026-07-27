@@ -22,9 +22,9 @@ export function ArtistDetailPage() {
             {artist && <RefreshAlbumsButton artistId={artist.id} />}
           </div>
         </div>
-        {artist?.followers != null && (
+        {artist?.follower_count != null && (
           <div className={styles.followers}>
-            <span className={styles.followersCount}>{artist.followers.toLocaleString()}</span>
+            <span className={styles.followersCount}>{artist.follower_count.toLocaleString()}</span>
             <span className={styles.followersLabel}>팔로워</span>
           </div>
         )}
