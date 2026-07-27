@@ -514,3 +514,38 @@
   font-weight: 600;
   cursor: pointer;
 }
+
+/* --- 통계 --- */
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.statCard {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.statIcon {
+  color: var(--muted);
+}
+
+.statLabel {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.statValue {
+  grid-column: 1 / -1;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}

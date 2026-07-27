@@ -99,6 +99,8 @@ func main() {
 	mux.HandleFunc("POST /artists/merge", s.requireAdmin(s.mergeArtists))
 	mux.HandleFunc("DELETE /artists/{id}", s.requireAdmin(s.deleteArtist))
 
+	mux.HandleFunc("GET /admin/stats", s.requireAdmin(s.adminStats))
+
 	// Admin crawling — Spotify search + pull a picked artist's albums into the DB
 	mux.HandleFunc("GET /admin/spotify/keys", s.requireAdmin(s.adminSpotifyKeys))
 	mux.HandleFunc("GET /admin/spotify/artists", s.requireAdmin(s.adminSpotifySearch))

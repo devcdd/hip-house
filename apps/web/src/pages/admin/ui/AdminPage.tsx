@@ -3,20 +3,22 @@ import { useAuth } from '@/entities/session'
 import { DeletedAlbumsTab } from './DeletedAlbumsTab'
 import { AliasManagerTab } from './AliasManagerTab'
 import { CrawlTab } from './CrawlTab'
+import { StatsTab } from './StatsTab'
 import styles from './AdminPage.module.css'
 
-type Tab = 'deleted' | 'aliases' | 'crawl'
+type Tab = 'deleted' | 'aliases' | 'crawl' | 'stats'
 const TABS: { key: Tab; label: string }[] = [
   { key: 'crawl', label: '크롤링' },
   { key: 'aliases', label: '연관검색어' },
   { key: 'deleted', label: '삭제된 앨범' },
+  { key: 'stats', label: '통계' },
 ]
 
 export function AdminPage() {
   const { isAdmin, isLoading } = useAuth()
   const [params, setParams] = useSearchParams()
   const raw = params.get('tab')
-  const tab: Tab = raw === 'aliases' ? 'aliases' : raw === 'deleted' ? 'deleted' : 'crawl'
+  const tab: Tab = raw === 'aliases' || raw === 'deleted' || raw === 'stats' ? raw : 'crawl'
 
   if (isLoading) return <p className={styles.state}>확인 중…</p>
   if (!isAdmin) return <p className={styles.state}>관리자 전용 페이지입니다.</p>
@@ -39,7 +41,15 @@ export function AdminPage() {
         ))}
       </div>
 
-      {tab === 'crawl' ? <CrawlTab /> : tab === 'deleted' ? <DeletedAlbumsTab /> : <AliasManagerTab />}
+      {tab === 'crawl' ? (
+        <CrawlTab />
+      ) : tab === 'deleted' ? (
+        <DeletedAlbumsTab />
+      ) : tab === 'stats' ? (
+        <StatsTab />
+      ) : (
+        <AliasManagerTab />
+      )}
     </div>
   )
 }
