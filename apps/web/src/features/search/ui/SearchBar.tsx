@@ -57,7 +57,7 @@ export function SearchBar() {
         className={styles.input}
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="앨범·아티스트 검색"
+        placeholder="앨범·아티스트·트랙 검색"
         aria-label="검색"
       />
       {q && (

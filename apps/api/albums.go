@@ -118,15 +118,17 @@ func buildAlbumListQuery(year *int, artistID, q string, types []string, sort str
 		args = append(args, artistID)
 		sql += " AND EXISTS (SELECT 1 FROM album_artists aa WHERE aa.album_id = albums.id AND aa.artist_id = $" + strconv.Itoa(len(args)) + ")"
 	}
-	// q matches the album name, a credited artist's name, or any admin-curated
-	// alias (연관검색어) — so "블랙넛" finds albums stored under "Black Nut".
+	// q matches the album name, a credited artist's name, any admin-curated
+	// alias (연관검색어) — so "블랙넛" finds albums stored under "Black Nut" —
+	// or a track name, so searching a song title surfaces its album.
 	if q != "" {
 		args = append(args, "%"+q+"%")
 		p := "$" + strconv.Itoa(len(args))
 		sql += " AND (albums.name ILIKE " + p +
 			" OR EXISTS (SELECT 1 FROM album_artists aa JOIN artists ar ON ar.id = aa.artist_id" +
 			" WHERE aa.album_id = albums.id AND (ar.name ILIKE " + p +
-			" OR EXISTS (SELECT 1 FROM unnest(COALESCE(ar.aliases,'{}'::text[])) AS al WHERE al ILIKE " + p + "))))"
+			" OR EXISTS (SELECT 1 FROM unnest(COALESCE(ar.aliases,'{}'::text[])) AS al WHERE al ILIKE " + p + ")))" +
+			" OR EXISTS (SELECT 1 FROM tracks t WHERE t.album_id = albums.id AND t.name ILIKE " + p + "))"
 	}
 	// Multi-select album types combine with OR. Empty = no filter (전체).
 	var conds []string
