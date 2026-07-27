@@ -10,7 +10,15 @@ export function SearchBar() {
   const navigate = useNavigate()
   const location = useLocation()
   const onSearchPage = location.pathname === '/search'
+  const urlQ = params.get('q') ?? ''
   const debounced = useDebouncedValue(q, 300)
+
+  // The input keeps its own state, so leaving search (로고 클릭, 뒤로가기, …) used
+  // to strand the old term in the box. Wipe it whenever we land somewhere that
+  // carries no q. Deps never change mid-typing, so this can't eat keystrokes.
+  useEffect(() => {
+    if (!onSearchPage && !urlQ) setQ('')
+  }, [onSearchPage, urlQ])
 
   // Live search: typing lands on /search (one history entry), then further
   // keystrokes replace in place so Back still returns to where you were.
