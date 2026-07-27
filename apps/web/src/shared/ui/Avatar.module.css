@@ -16,9 +16,10 @@
   line-height: 1;
 }
 
-/* Rounded square variant — cqw keeps the corner radius proportional to the size. */
+/* Rounded square variant — % keeps the corner radius proportional to the size.
+   (cqw would resolve against an ancestor container, not this box.) */
 .square {
-  border-radius: 14cqw;
+  border-radius: 14%;
 }
 
 .avatar img {
