@@ -20,9 +20,15 @@ export function YearFilter({ years, value, onChange }: Props) {
   const swiperRef = useRef<SwiperClass | null>(null)
 
   // Bring the selected year into view when it changes (e.g. cleared from URL).
+  // Only when it actually changes — re-running this on unrelated renders yanks
+  // the strip back to the selected chip mid-swipe.
+  const scrolledTo = useRef<YearOption | null>(null)
   useEffect(() => {
+    if (scrolledTo.current === value) return
     const i = years.indexOf(value)
-    if (i >= 0) swiperRef.current?.slideTo(i)
+    if (i < 0) return
+    scrolledTo.current = value
+    swiperRef.current?.slideTo(i)
   }, [value, years])
 
   return (
