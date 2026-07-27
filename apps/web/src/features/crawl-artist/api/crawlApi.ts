@@ -15,6 +15,7 @@ export interface CrawlResult {
   artist_name?: string | null
   artists?: number
   enriched?: number
+  tracks_synced?: number // 트랙까지 새로 받아온 앨범 수 (미동기화분만)
 }
 
 // Admin: pull an artist's Spotify discography into the DB.

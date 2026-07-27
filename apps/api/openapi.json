@@ -76,6 +76,17 @@
         }
       }
     },
+    "/albums/{id}/tracks": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+      "get": {
+        "tags": ["albums"],
+        "summary": "앨범 트랙 목록",
+        "description": "disc_number, track_number 순 정렬. 아직 트랙 동기화 전인 앨범은 빈 배열.",
+        "responses": {
+          "200": { "description": "트랙 배열", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Track" } } } } }
+        }
+      }
+    },
     "/artists": {
       "get": {
         "tags": ["artists"],
@@ -173,7 +184,7 @@
       "post": {
         "tags": ["artists"],
         "summary": "아티스트 앨범 크롤 (관리자)",
-        "description": "해당 아티스트의 전체 앨범을 Spotify에서 가져와 저장. 앨범 0개면 아티스트를 저장하지 않음. 크레딧 아티스트 중 이미지 없는 것만 개별 enrich.",
+        "description": "해당 아티스트의 전체 앨범을 Spotify에서 가져와 저장. 앨범 0개면 아티스트를 저장하지 않음. 크레딧 아티스트 중 이미지 없는 것만 개별 enrich. 트랙 미동기화 앨범(신규 포함)은 트랙까지 같이 수집.",
         "requestBody": {
           "required": true,
           "content": { "application/json": { "schema": { "type": "object", "required": ["artist_id"], "properties": {
@@ -182,8 +193,38 @@
           } } } }
         },
         "responses": {
-          "200": { "description": "크롤 결과 {albums, saved, artist_name, artists, enriched}" },
+          "200": { "description": "크롤 결과 {albums, saved, artist_name, artists, enriched, tracks_synced}" },
           "502": { "description": "Spotify API 오류", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/admin/tracks/status": {
+      "get": {
+        "tags": ["albums"],
+        "summary": "트랙 동기화 현황 (관리자)",
+        "description": "삭제되지 않은 앨범 기준. missing = 아직 트랙을 받아오지 않은 앨범 수, tracks = 저장된 전체 트랙 행 수.",
+        "responses": {
+          "200": { "description": "{albums, synced, missing, tracks}", "content": { "application/json": { "schema": { "type": "object", "properties": {
+            "albums": { "type": "integer" }, "synced": { "type": "integer" },
+            "missing": { "type": "integer" }, "tracks": { "type": "integer" }
+          } } } } }
+        }
+      }
+    },
+    "/admin/tracks/backfill": {
+      "post": {
+        "tags": ["albums"],
+        "summary": "트랙 백필 배치 실행 (관리자)",
+        "description": "트랙 미동기화 앨범을 최신 발매순으로 최대 limit개 처리 (앨범당 Spotify 요청 1회, 앨범별 커밋). 404 앨범은 빈 트랙으로 완료 처리. 그 외 Spotify 오류는 배치를 중단하고 진행분과 함께 error로 보고. remaining이 0이 될 때까지 반복 호출.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": {
+            "key": { "type": "string", "enum": ["first", "second"] },
+            "limit": { "type": "integer", "default": 20, "minimum": 1, "maximum": 50 }
+          } } } }
+        },
+        "responses": {
+          "200": { "description": "{synced, not_found, tracks, remaining, albums:[{id,name,tracks,not_found}], error?}" }
         }
       }
     },
@@ -279,6 +320,24 @@
           "aliases": { "type": "array", "items": { "type": "string" }, "nullable": true, "description": "연관검색어 — 관리자가 등록한 검색 키워드 (예: 영문명의 한글 표기). 검색 시 name과 함께 매칭됨" },
           "followers": { "type": "integer", "nullable": true, "description": "Spotify 팔로워 수 — 크롤러/enrich가 채움 (아직 수집 전이면 null). 화면 표시용이 아니라 관리자 enrich 판단용" },
           "follower_count": { "type": "integer", "description": "서비스 내부 팔로워 수 — follows 테이블 집계" }
+        }
+      },
+      "Track": {
+        "type": "object",
+        "required": ["id", "disc_number", "track_number", "name", "explicit", "artists"],
+        "properties": {
+          "id": { "type": "string", "example": "3n3Ppam7vgaVa1iaRUc9Lp" },
+          "disc_number": { "type": "integer", "example": 1 },
+          "track_number": { "type": "integer", "example": 3 },
+          "name": { "type": "string", "example": "Track Name" },
+          "duration_ms": { "type": "integer", "nullable": true, "example": 207959 },
+          "explicit": { "type": "boolean" },
+          "spotify_url": { "type": "string", "nullable": true },
+          "artists": {
+            "type": "array",
+            "description": "참여 아티스트 (피처링 포함, Spotify 크레딧 순서)",
+            "items": { "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" } } }
+          }
         }
       },
       "Error": {

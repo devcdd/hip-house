@@ -100,6 +100,18 @@ func (t *spotifyTokens) get(ctx context.Context, key string, force bool) (string
 	return out.AccessToken, nil
 }
 
+// spError is a non-2xx Spotify response, kept typed so callers can branch on
+// Status (the tracks backfill treats a 404 differently from a quota error).
+type spError struct {
+	Status int
+	URL    string
+	Body   string
+}
+
+func (e *spError) Error() string {
+	return fmt.Sprintf("spotify %d @ %s: %.200s", e.Status, e.URL, e.Body)
+}
+
 // spGet fetches a Spotify API URL into dst, refreshing the token once on 401
 // and waiting out one short 429 (long retry-after = quota exhausted → error).
 func (s *server) spGet(ctx context.Context, key, rawURL string, dst any) error {
@@ -141,7 +153,7 @@ func (s *server) spGet(ctx context.Context, key, rawURL string, dst any) error {
 			}
 			continue
 		case res.StatusCode >= 400:
-			return fmt.Errorf("spotify %d @ %s: %.200s", res.StatusCode, rawURL, body)
+			return &spError{Status: res.StatusCode, URL: rawURL, Body: string(body)}
 		}
 		return json.Unmarshal(body, dst)
 	}
@@ -416,13 +428,39 @@ func (s *server) adminSpotifyCrawl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Albums never track-synced (i.e. the newly added ones) get their tracks in
+	// the same run, so a fresh crawl arrives complete; re-crawling an existing
+	// artist costs nothing extra. Best-effort like enrich: a failed album keeps
+	// tracks_synced_at NULL and the 트랙 동기화 backfill catches it later.
+	tracksSynced := 0
+	albumIDs := make([]string, 0, len(albums))
+	for id := range albums {
+		albumIDs = append(albumIDs, id)
+	}
+	var unsynced []string
+	rows, err = s.db.Query(r.Context(),
+		"SELECT id FROM albums WHERE id = ANY($1) AND deleted_at IS NULL AND tracks_synced_at IS NULL", albumIDs)
+	if err == nil {
+		unsynced, _ = pgx.CollectRows(rows, pgx.RowTo[string])
+	}
+	for _, id := range unsynced {
+		tracks, _, err := s.fetchAlbumTracks(r.Context(), body.Key, id, market)
+		if err != nil {
+			continue
+		}
+		if err := s.saveAlbumTracks(r.Context(), id, tracks); err == nil {
+			tracksSynced++
+		}
+	}
+
 	var name *string
 	_ = s.db.QueryRow(r.Context(), "SELECT name FROM artists WHERE id=$1", body.ArtistID).Scan(&name)
 	writeJSON(w, 200, map[string]any{
-		"albums":      len(albums),
-		"saved":       true,
-		"artist_name": name,
-		"artists":     len(credited),
-		"enriched":    enriched,
+		"albums":        len(albums),
+		"saved":         true,
+		"artist_name":   name,
+		"artists":       len(credited),
+		"enriched":      enriched,
+		"tracks_synced": tracksSynced,
 	})
 }

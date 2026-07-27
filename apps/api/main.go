@@ -94,6 +94,7 @@ func main() {
 	mux.HandleFunc("GET /albums/years", s.listYears)
 	mux.HandleFunc("POST /albums", s.requireAdmin(s.createAlbum))
 	mux.HandleFunc("GET /albums/{id}", s.getAlbum)
+	mux.HandleFunc("GET /albums/{id}/tracks", s.listAlbumTracks)
 	mux.HandleFunc("PUT /albums/{id}", s.requireAdmin(s.updateAlbum))
 	mux.HandleFunc("DELETE /albums/{id}", s.requireAdmin(s.deleteAlbum))
 	mux.HandleFunc("POST /albums/{id}/restore", s.requireAdmin(s.restoreAlbum))
@@ -115,6 +116,10 @@ func main() {
 	mux.HandleFunc("GET /admin/spotify/keys", s.requireAdmin(s.adminSpotifyKeys))
 	mux.HandleFunc("GET /admin/spotify/artists", s.requireAdmin(s.adminSpotifySearch))
 	mux.HandleFunc("POST /admin/spotify/crawl", s.requireAdmin(s.adminSpotifyCrawl))
+
+	// Admin 트랙 동기화 — batch-backfill track lists for albums that lack them
+	mux.HandleFunc("GET /admin/tracks/status", s.requireAdmin(s.adminTracksStatus))
+	mux.HandleFunc("POST /admin/tracks/backfill", s.requireAdmin(s.adminTracksBackfill))
 
 	mux.HandleFunc("GET /openapi.json", serveSpec)
 	mux.HandleFunc("GET /swagger/", swaggerUI)
@@ -199,6 +204,26 @@ func (s *server) ensureAuthSchema(ctx context.Context) error {
 			PRIMARY KEY (album_id, artist_id)
 		);
 		CREATE INDEX IF NOT EXISTS idx_album_artists_artist ON album_artists(artist_id);
+
+		-- Per-album track lists pulled from Spotify (관리자 트랙 동기화). artists is a
+		-- JSONB array [{id,name}] in credit order, features included — kept inline
+		-- instead of normalized so feature-only artists don't pollute the artists table.
+		CREATE TABLE IF NOT EXISTS tracks (
+			album_id TEXT NOT NULL,
+			id TEXT NOT NULL,
+			disc_number INTEGER NOT NULL DEFAULT 1,
+			track_number INTEGER NOT NULL DEFAULT 0,
+			name TEXT NOT NULL,
+			duration_ms INTEGER,
+			explicit BOOLEAN NOT NULL DEFAULT false,
+			spotify_url TEXT,
+			artists JSONB NOT NULL DEFAULT '[]',
+			PRIMARY KEY (album_id, id)
+		);
+		CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(album_id, disc_number, track_number);
+		-- Set once a sync attempt completed (even with 0 tracks); NULL = 백필 대기.
+		ALTER TABLE IF EXISTS albums ADD COLUMN IF NOT EXISTS tracks_synced_at TIMESTAMPTZ;
+
 		ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS image_url TEXT;
 		ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS genres TEXT[];
 		ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS spotify_url TEXT;

@@ -35,7 +35,7 @@ export function CrawlTab() {
     onSuccess: (res) => {
       setMessage(
         res.saved
-          ? `✅ ${res.artist_name ?? '아티스트'}: 앨범 ${res.albums}개 저장 (크레딧 아티스트 ${res.artists ?? 0}명, 이미지 ${res.enriched ?? 0}개 채움)`
+          ? `✅ ${res.artist_name ?? '아티스트'}: 앨범 ${res.albums}개 저장 (크레딧 아티스트 ${res.artists ?? 0}명, 이미지 ${res.enriched ?? 0}개, 트랙 동기화 ${res.tracks_synced ?? 0}개)`
           : '앨범이 0개라 저장하지 않았습니다.',
       )
       qc.invalidateQueries({ queryKey: ['artists'] })

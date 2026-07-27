@@ -220,6 +220,45 @@
   cursor: pointer;
 }
 
+/* --- 트랙 동기화 --- */
+
+.runNote {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.trackLog {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.trackLog p {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.trackLogLine {
+  color: var(--fg);
+}
+
+.trackLogWarn {
+  color: #ff8a3d;
+}
+
+.trackLogErr {
+  color: #e5484d;
+}
+
+.trackLogInfo {
+  font-weight: 700;
+}
+
 .rowDelete {
   flex: none;
   display: grid;
