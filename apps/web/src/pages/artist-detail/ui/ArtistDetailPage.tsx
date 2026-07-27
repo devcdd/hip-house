@@ -22,6 +22,12 @@ export function ArtistDetailPage() {
             {artist && <RefreshAlbumsButton artistId={artist.id} />}
           </div>
         </div>
+        {artist?.followers != null && (
+          <div className={styles.followers}>
+            <span className={styles.followersCount}>{artist.followers.toLocaleString()}</span>
+            <span className={styles.followersLabel}>팔로워</span>
+          </div>
+        )}
       </header>
 
       {error && <p className={styles.state}>불러오기 실패: {String(error)}</p>}

@@ -203,6 +203,7 @@ func (s *server) ensureAuthSchema(ctx context.Context) error {
 		ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS genres TEXT[];
 		ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS spotify_url TEXT;
 		ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS aliases TEXT[];
+		ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS followers INTEGER;
 
 		-- Backfill the legacy single-artist column into the join table. We DON'T drop
 		-- the old artist_id/artist_name columns: artist_name still holds the only record

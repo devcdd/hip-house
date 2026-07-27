@@ -386,15 +386,15 @@ func (s *server) adminSpotifyCrawl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Enrich only credited artists still missing an image — one request each
-	// (the batch /artists endpoint 403s for dev-mode apps).
+	// Enrich only credited artists still missing an image or follower count —
+	// one request each (the batch /artists endpoint 403s for dev-mode apps).
 	ids := make([]string, 0, len(credited))
 	for id := range credited {
 		ids = append(ids, id)
 	}
 	var missing []string
 	rows, err := s.db.Query(r.Context(),
-		"SELECT id FROM artists WHERE id = ANY($1) AND image_url IS NULL", ids)
+		"SELECT id FROM artists WHERE id = ANY($1) AND (image_url IS NULL OR followers IS NULL)", ids)
 	if err == nil {
 		missing, _ = pgx.CollectRows(rows, pgx.RowTo[string])
 	}
@@ -410,8 +410,8 @@ func (s *server) adminSpotifyCrawl(w http.ResponseWriter, r *http.Request) {
 		}
 		if _, err := s.db.Exec(r.Context(),
 			`UPDATE artists SET name=COALESCE($2,name), image_url=COALESCE($3,image_url),
-			   genres=COALESCE($4,genres), spotify_url=COALESCE($5,spotify_url) WHERE id=$1`,
-			id, strPtr(a.Name), img, a.Genres, strPtr(a.ExternalURLs.Spotify)); err == nil {
+			   genres=COALESCE($4,genres), spotify_url=COALESCE($5,spotify_url), followers=$6 WHERE id=$1`,
+			id, strPtr(a.Name), img, a.Genres, strPtr(a.ExternalURLs.Spotify), a.Followers.Total); err == nil {
 			enriched++
 		}
 	}

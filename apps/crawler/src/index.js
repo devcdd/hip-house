@@ -126,6 +126,7 @@ async function fetchArtistDetails(ids, tokenRef) {
       image_url: a.images?.[0]?.url ?? null,
       genres: a.genres ?? [],
       spotify_url: a.external_urls?.spotify ?? null,
+      followers: a.followers?.total ?? null,
     });
   };
   for (let i = 0; i < ids.length; i += 50) {
@@ -152,7 +153,7 @@ export async function enrichArtists(db, tokenRef, ids) {
   if (!ids.length) return;
   const details = await fetchArtistDetails(ids, tokenRef);
   for (const [id, d] of details)
-    await upsertArtist(db, id, d.name, { imageUrl: d.image_url, genres: d.genres, spotifyUrl: d.spotify_url });
+    await upsertArtist(db, id, d.name, { imageUrl: d.image_url, genres: d.genres, spotifyUrl: d.spotify_url, followers: d.followers });
 }
 
 export async function fetchArtistAlbums(artistId, tokenRef) {
@@ -169,14 +170,15 @@ export async function fetchArtistAlbums(artistId, tokenRef) {
 
 // Extra fields (image/genres/spotify_url) only overwrite when supplied — COALESCE keeps
 // existing values when this call has none (e.g. the inline per-album link carries name only).
-export const upsertArtist = (db, id, name, { imageUrl = null, genres = null, spotifyUrl = null } = {}) =>
+export const upsertArtist = (db, id, name, { imageUrl = null, genres = null, spotifyUrl = null, followers = null } = {}) =>
   db.query(
-    `INSERT INTO artists(id,name,image_url,genres,spotify_url) VALUES($1,$2,$3,$4,$5)
+    `INSERT INTO artists(id,name,image_url,genres,spotify_url,followers) VALUES($1,$2,$3,$4,$5,$6)
      ON CONFLICT(id) DO UPDATE SET name=EXCLUDED.name,
        image_url=COALESCE(EXCLUDED.image_url, artists.image_url),
        genres=COALESCE(EXCLUDED.genres, artists.genres),
-       spotify_url=COALESCE(EXCLUDED.spotify_url, artists.spotify_url)`,
-    [id, name, imageUrl, genres, spotifyUrl]
+       spotify_url=COALESCE(EXCLUDED.spotify_url, artists.spotify_url),
+       followers=COALESCE(EXCLUDED.followers, artists.followers)`,
+    [id, name, imageUrl, genres, spotifyUrl, followers]
   );
 
 const upsertAlbumRow = (db, r) =>
@@ -216,6 +218,7 @@ export async function openDb() {
     ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS genres TEXT[];
     ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS spotify_url TEXT;
     ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS aliases TEXT[];
+    ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS followers INTEGER;
     CREATE TABLE IF NOT EXISTS albums (
       id TEXT PRIMARY KEY, name TEXT NOT NULL,
       release_date TEXT, year INTEGER, album_type TEXT,

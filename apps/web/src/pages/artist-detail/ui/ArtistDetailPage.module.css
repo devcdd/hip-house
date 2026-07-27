@@ -30,6 +30,27 @@
   gap: 8px;
 }
 
+/* Pinned to the right edge of the header, opposite the avatar + name. */
+.followers {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.followersCount {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.followersLabel {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
 .name {
   font-size: 1.9rem;
   font-weight: 800;

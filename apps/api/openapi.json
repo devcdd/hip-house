@@ -276,7 +276,8 @@
           "image_url": { "type": "string", "nullable": true, "description": "Spotify 아티스트 사진 (없을 수 있음)" },
           "genres": { "type": "array", "items": { "type": "string" }, "nullable": true, "description": "Spotify 아티스트 장르 (비어있을 수 있음)" },
           "spotify_url": { "type": "string", "nullable": true, "description": "Spotify 아티스트 프로필 URL" },
-          "aliases": { "type": "array", "items": { "type": "string" }, "nullable": true, "description": "연관검색어 — 관리자가 등록한 검색 키워드 (예: 영문명의 한글 표기). 검색 시 name과 함께 매칭됨" }
+          "aliases": { "type": "array", "items": { "type": "string" }, "nullable": true, "description": "연관검색어 — 관리자가 등록한 검색 키워드 (예: 영문명의 한글 표기). 검색 시 name과 함께 매칭됨" },
+          "followers": { "type": "integer", "nullable": true, "description": "Spotify 팔로워 수 — 크롤러/enrich가 채움 (아직 수집 전이면 null)" }
         }
       },
       "Error": {

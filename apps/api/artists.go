@@ -19,9 +19,11 @@ type Artist struct {
 	// 연관검색어 — admin-curated search keywords (e.g. Korean spellings of an
 	// English artist name). Never written by the crawler.
 	Aliases []string `json:"aliases" db:"aliases"`
+	// Spotify follower count, crawler/enrich-owned; null until first enriched.
+	Followers *int `json:"followers" db:"followers"`
 }
 
-const artistCols = "id,name,image_url,genres,spotify_url,aliases"
+const artistCols = "id,name,image_url,genres,spotify_url,aliases,followers"
 
 func (s *server) listArtists(w http.ResponseWriter, r *http.Request) {
 	limit, offset := clampPage(r)
@@ -79,8 +81,8 @@ func (s *server) createArtist(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, "id is required")
 		return
 	}
-	_, err := s.db.Exec(r.Context(), "INSERT INTO artists("+artistCols+") VALUES($1,$2,$3,$4,$5,$6)",
-		a.ID, a.Name, a.ImageURL, a.Genres, a.SpotifyURL, normalizeAliases(a.Aliases))
+	_, err := s.db.Exec(r.Context(), "INSERT INTO artists("+artistCols+") VALUES($1,$2,$3,$4,$5,$6,$7)",
+		a.ID, a.Name, a.ImageURL, a.Genres, a.SpotifyURL, normalizeAliases(a.Aliases), a.Followers)
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 		writeErr(w, 409, "artist id already exists")
