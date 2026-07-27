@@ -7,12 +7,22 @@ interface Props {
   placeholder?: string
   autoFocus?: boolean
   onCancel?: () => void
+  initialBody?: string
+  submitLabel?: string
 }
 
 export const MAX_LEN = 1000 // mirrors the API's maxCommentLen
 
-export function CommentForm({ onSubmit, pending, placeholder = '댓글 남기기', autoFocus, onCancel }: Props) {
-  const [body, setBody] = useState('')
+export function CommentForm({
+  onSubmit,
+  pending,
+  placeholder = '댓글 남기기',
+  autoFocus,
+  onCancel,
+  initialBody = '',
+  submitLabel = '등록',
+}: Props) {
+  const [body, setBody] = useState(initialBody)
   const text = body.trim()
 
   function submit(e: FormEvent) {
@@ -44,7 +54,7 @@ export function CommentForm({ onSubmit, pending, placeholder = '댓글 남기기
           </button>
         )}
         <button type="submit" className={styles.submit} disabled={!text || pending}>
-          등록
+          {submitLabel}
         </button>
       </div>
     </form>

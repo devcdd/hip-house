@@ -21,6 +21,7 @@ type Comment struct {
 	Body      string `json:"body" db:"body"`
 	CreatedAt string `json:"created_at" db:"created_at"`
 	Deleted   bool   `json:"deleted" db:"deleted"`
+	Edited    bool   `json:"edited" db:"edited"`
 }
 
 // listComments is public. Deleted comments survive only as tombstones for their
@@ -32,7 +33,8 @@ func (s *server) listComments(w http.ResponseWriter, r *http.Request) {
 		SELECT c.id, c.parent_id, c.user_id, u.nickname,
 		       CASE WHEN c.deleted_at IS NULL THEN c.body ELSE '' END AS body,
 		       to_char(c.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at,
-		       (c.deleted_at IS NOT NULL) AS deleted
+		       (c.deleted_at IS NOT NULL) AS deleted,
+		       (c.edited_at IS NOT NULL) AS edited
 		FROM comments c JOIN users u ON u.id = c.user_id
 		WHERE c.album_id = $1
 		  AND (c.deleted_at IS NULL
@@ -103,14 +105,59 @@ func (s *server) addComment(w http.ResponseWriter, r *http.Request) {
 		INSERT INTO comments(album_id, user_id, parent_id, body) VALUES($1,$2,$3,$4)
 		RETURNING id, parent_id, user_id,
 		          (SELECT nickname FROM users WHERE id=$2), body,
-		          to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), false`,
+		          to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), false, false`,
 		albumID, currentUser(r).ID, body.ParentID, text).
-		Scan(&c.ID, &c.ParentID, &c.UserID, &c.Nickname, &c.Body, &c.CreatedAt, &c.Deleted)
+		Scan(&c.ID, &c.ParentID, &c.UserID, &c.Nickname, &c.Body, &c.CreatedAt, &c.Deleted, &c.Edited)
 	if err != nil {
 		writeErr(w, 500, err.Error())
 		return
 	}
 	writeJSON(w, 201, c)
+}
+
+// updateComment rewrites a comment's body. Author only — an admin can remove a
+// comment but must not be able to put words in someone's mouth. edited_at marks
+// it so readers can tell the text changed after the fact.
+func (s *server) updateComment(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		writeErr(w, 400, "invalid comment id")
+		return
+	}
+	var body struct {
+		Body string `json:"body"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	text := strings.TrimSpace(body.Body)
+	if text == "" {
+		writeErr(w, 400, "body is required")
+		return
+	}
+	if len([]rune(text)) > maxCommentLen {
+		writeErr(w, 400, "body is too long (max "+strconv.Itoa(maxCommentLen)+" characters)")
+		return
+	}
+
+	var c Comment
+	err = s.db.QueryRow(r.Context(), `
+		UPDATE comments SET body=$1, edited_at=now()
+		WHERE id=$2 AND user_id=$3 AND deleted_at IS NULL
+		RETURNING id, parent_id, user_id,
+		          (SELECT nickname FROM users WHERE id=$3), body,
+		          to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), false, true`,
+		text, id, currentUser(r).ID).
+		Scan(&c.ID, &c.ParentID, &c.UserID, &c.Nickname, &c.Body, &c.CreatedAt, &c.Deleted, &c.Edited)
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeErr(w, 404, "comment not found")
+		return
+	}
+	if err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	writeJSON(w, 200, c)
 }
 
 // deleteComment soft-deletes so replies written by other users survive; the row

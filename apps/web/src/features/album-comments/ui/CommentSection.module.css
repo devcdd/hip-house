@@ -152,7 +152,7 @@
   color: var(--fg);
 }
 
-.delete {
+.iconBtn {
   display: inline-grid;
   place-items: center;
   padding: 2px;
@@ -162,8 +162,21 @@
   cursor: pointer;
 }
 
-.delete:hover {
-  color: #ff4d6d;
+.iconBtn:hover:not(:disabled) {
+  color: var(--fg);
+}
+
+.iconBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.edited {
+  font-size: 0.72rem;
+}
+
+.editForm {
+  margin-top: 6px;
 }
 
 .text,

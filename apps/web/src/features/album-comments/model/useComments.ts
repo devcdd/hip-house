@@ -1,6 +1,12 @@
 import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchComments, addComment, removeComment, type Comment } from '@/features/album-comments/api/commentApi'
+import {
+  fetchComments,
+  addComment,
+  editComment,
+  removeComment,
+  type Comment,
+} from '@/features/album-comments/api/commentApi'
 import { useToast } from '@/shared/ui/toast'
 
 export interface Thread {
@@ -40,6 +46,19 @@ export function useAddComment(albumId: string) {
       toast(parentId ? '답글을 남겼습니다' : '댓글을 남겼습니다')
     },
     onError: () => toast('댓글 등록에 실패했습니다', 'error'),
+  })
+}
+
+export function useEditComment(albumId: string) {
+  const qc = useQueryClient()
+  const toast = useToast()
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: string }) => editComment(id, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['comments', albumId] })
+      toast('댓글을 수정했습니다')
+    },
+    onError: () => toast('댓글 수정에 실패했습니다', 'error'),
   })
 }
 

@@ -86,6 +86,7 @@ func main() {
 	// Comments — reads public, writing/deleting requires auth
 	mux.HandleFunc("GET /albums/{id}/comments", s.listComments)
 	mux.HandleFunc("POST /albums/{id}/comments", s.requireAuth(s.addComment))
+	mux.HandleFunc("PUT /comments/{id}", s.requireAuth(s.updateComment))
 	mux.HandleFunc("DELETE /comments/{id}", s.requireAuth(s.deleteComment))
 
 	// Albums — reads public, writes admin-only
@@ -187,6 +188,7 @@ func (s *server) ensureAuthSchema(ctx context.Context) error {
 		);
 		CREATE INDEX IF NOT EXISTS idx_comments_album ON comments(album_id, id);
 		CREATE INDEX IF NOT EXISTS idx_comments_parent ON comments(parent_id);
+		ALTER TABLE IF EXISTS comments ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
 		ALTER TABLE IF EXISTS albums ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 
 		-- Normalize album↔artist into a many-to-many join (was albums.artist_id/artist_name).
