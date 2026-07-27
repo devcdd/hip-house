@@ -2,6 +2,7 @@ import { useParams } from 'react-router-dom'
 import { useArtist } from '@/entities/artist'
 import { AlbumFeed } from '@/widgets/album-feed'
 import { FollowButton } from '@/features/follow-artist'
+import { RefreshAlbumsButton } from '@/features/crawl-artist'
 import { Avatar } from '@/shared/ui/Avatar'
 import styles from './ArtistDetailPage.module.css'
 
@@ -16,7 +17,10 @@ export function ArtistDetailPage() {
         <Avatar src={artist?.image_url} name={name} size={88} />
         <div className={styles.headerInfo}>
           <h1 className={styles.name}>{isLoading ? '불러오는 중…' : name}</h1>
-          {artist && <FollowButton artistId={artist.id} />}
+          <div className={styles.headerActions}>
+            {artist && <FollowButton artistId={artist.id} />}
+            {artist && <RefreshAlbumsButton artistId={artist.id} />}
+          </div>
         </div>
       </header>
 

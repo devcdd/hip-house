@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Download, Search, X } from 'lucide-react'
 import { Avatar } from '@/shared/ui/Avatar'
 import { useDebouncedValue } from '@/shared/lib/useDebouncedValue'
-import { crawlArtist, fetchSpotifyKeys, searchSpotifyArtists } from '../api/spotifyAdminApi'
+import { searchSpotifyArtists } from '../api/spotifyAdminApi'
+import { crawlArtist, fetchSpotifyKeys } from '@/features/crawl-artist'
 import styles from './AdminPage.module.css'
 
 const nf = new Intl.NumberFormat('ko-KR')
