@@ -16,6 +16,11 @@
   line-height: 1;
 }
 
+/* Rounded square variant — cqw keeps the corner radius proportional to the size. */
+.square {
+  border-radius: 14cqw;
+}
+
 .avatar img {
   width: 100%;
   height: 100%;

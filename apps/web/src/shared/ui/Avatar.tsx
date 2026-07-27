@@ -5,15 +5,20 @@ interface Props {
   name: string
   /** Any CSS width — a number is px. Height always follows as a 1:1 square. */
   size?: number | string
+  /** 'circle' (default) or 'square' — a rounded square, used on the artist detail header. */
+  shape?: 'circle' | 'square'
   className?: string
 }
 
-// One round artist avatar for every surface (card / detail header / admin rows).
-// The circle lives on the box, never on the <img>, so a non-square source is
-// clipped to a circle instead of rendering as an ellipse.
-export function Avatar({ src, name, size = '100%', className }: Props) {
+// One artist avatar for every surface (card / detail header / admin rows).
+// The clip lives on the box, never on the <img>, so a non-square source is
+// cropped to the shape instead of rendering distorted.
+export function Avatar({ src, name, size = '100%', shape = 'circle', className }: Props) {
+  const classes = [styles.avatar, shape === 'square' && styles.square, className]
+    .filter(Boolean)
+    .join(' ')
   return (
-    <div className={className ? `${styles.avatar} ${className}` : styles.avatar} style={{ width: size }}>
+    <div className={classes} style={{ width: size }}>
       {src ? <img src={src} alt={name} loading="lazy" /> : name.slice(0, 1)}
     </div>
   )

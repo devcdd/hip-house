@@ -14,7 +14,7 @@ export function ArtistDetailPage() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <Avatar src={artist?.image_url} name={name} size={88} />
+        <Avatar src={artist?.image_url} name={name} size={88} shape="square" />
         <div className={styles.headerInfo}>
           <h1 className={styles.name}>{isLoading ? '불러오는 중…' : name}</h1>
           <div className={styles.headerActions}>
