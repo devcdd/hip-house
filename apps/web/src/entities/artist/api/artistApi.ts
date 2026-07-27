@@ -16,9 +16,13 @@ export function updateArtistAliases(id: string, aliases: string[]): Promise<Arti
   return apiPut<Artist>(`/artists/${encodeURIComponent(id)}/aliases`, { aliases })
 }
 
-// Admin: delete an artist (server also drops its album credits).
-export function deleteArtist(id: string): Promise<void> {
-  return apiDelete<void>(`/artists/${encodeURIComponent(id)}`)
+export type DeleteMode = 'soft' | 'hard'
+
+// Admin: 'soft' keeps the artist and only soft-deletes the albums they are the
+// sole credit on; 'hard' removes the artist and every album they appear on.
+// Returns how many albums were affected.
+export function deleteArtist(id: string, mode: DeleteMode): Promise<{ mode: DeleteMode; albums: number }> {
+  return apiDelete<{ mode: DeleteMode; albums: number }>(`/artists/${encodeURIComponent(id)}?mode=${mode}`)
 }
 
 // Admin: fold mergedIds into masterId — credits move over, names/aliases become

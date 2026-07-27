@@ -430,3 +430,87 @@
     margin-left: auto;
   }
 }
+
+/* --- 아티스트 삭제 확인 (soft / hard) --- */
+
+.confirm {
+  margin: auto;
+  padding: 0;
+  border: none;
+  border-radius: 18px;
+  background: var(--bg);
+  color: var(--fg);
+  width: min(92vw, 420px);
+}
+
+.confirm::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.confirmSheet {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 22px 20px 18px;
+}
+
+.confirmTitle {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.confirmSoft,
+.confirmHard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--fg) 14%, transparent);
+  border-radius: 12px;
+  background: none;
+  color: var(--fg);
+  text-align: left;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.confirmSoft span,
+.confirmHard span {
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.confirmSoft:hover:not(:disabled) {
+  background: var(--surface);
+}
+
+.confirmHard {
+  border-color: #ff4d6d;
+  color: #ff4d6d;
+}
+
+.confirmHard:hover:not(:disabled) {
+  background: color-mix(in srgb, #ff4d6d 12%, transparent);
+}
+
+.confirmSoft:disabled,
+.confirmHard:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.confirmCancel {
+  align-self: flex-end;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}

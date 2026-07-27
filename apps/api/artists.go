@@ -153,7 +153,22 @@ func (s *server) updateArtistAliases(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, a)
 }
 
+// deleteArtist has two modes, picked with ?mode= (no default — the two outcomes
+// are too different to guess at):
+//
+//	soft: keep the artist row, soft-delete only the albums they are the ONLY
+//	      credited artist on. Reversible from 관리자 삭제 목록.
+//	hard: delete the artist and EVERY album they are credited on — including
+//	      albums that are really someone else's and only feature them — plus the
+//	      favorites/ratings/comments hanging off those albums. Irreversible.
 func (s *server) deleteArtist(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	mode := r.URL.Query().Get("mode")
+	if mode != "soft" && mode != "hard" {
+		writeErr(w, 400, "mode must be 'soft' or 'hard'")
+		return
+	}
+
 	tx, err := s.db.Begin(r.Context())
 	if err != nil {
 		writeErr(w, 500, err.Error())
@@ -161,25 +176,83 @@ func (s *server) deleteArtist(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(r.Context())
 
-	// Drop the artist's album credits too — the join table has no FK.
-	if _, err := tx.Exec(r.Context(), "DELETE FROM album_artists WHERE artist_id=$1", r.PathValue("id")); err != nil {
+	var exists bool
+	if err := tx.QueryRow(r.Context(), "SELECT EXISTS (SELECT 1 FROM artists WHERE id=$1)", id).Scan(&exists); err != nil {
 		writeErr(w, 500, err.Error())
 		return
 	}
-	tag, err := tx.Exec(r.Context(), "DELETE FROM artists WHERE id=$1", r.PathValue("id"))
-	if err != nil {
-		writeErr(w, 500, err.Error())
-		return
-	}
-	if tag.RowsAffected() == 0 {
+	if !exists {
 		writeErr(w, 404, "artist not found")
 		return
 	}
+
+	var albums int64
+	if mode == "soft" {
+		// "Solo" = the album has exactly one credit row and it points at this
+		// artist, so nothing else on the album is lost.
+		tag, err := tx.Exec(r.Context(), `
+			UPDATE albums SET deleted_at = now()
+			WHERE deleted_at IS NULL AND id IN (
+				SELECT aa.album_id FROM album_artists aa
+				GROUP BY aa.album_id
+				HAVING count(*) = 1 AND min(aa.artist_id) = $1
+			)`, id)
+		if err != nil {
+			writeErr(w, 500, err.Error())
+			return
+		}
+		albums = tag.RowsAffected()
+	} else {
+		// Collect the album ids up front: deleting from album_artists would
+		// otherwise erase the very rows that define the set.
+		rows, err := tx.Query(r.Context(), "SELECT album_id FROM album_artists WHERE artist_id=$1", id)
+		if err != nil {
+			writeErr(w, 500, err.Error())
+			return
+		}
+		ids, err := pgx.CollectRows(rows, pgx.RowTo[string])
+		if err != nil {
+			writeErr(w, 500, err.Error())
+			return
+		}
+		if len(ids) > 0 {
+			// favorites/ratings/comments reference album_id without an FK, and
+			// album_artists still holds the co-credits of the doomed albums —
+			// all of it has to go by hand or it lingers as orphan rows.
+			for _, q := range []string{
+				"DELETE FROM favorites WHERE album_id = ANY($1)",
+				"DELETE FROM ratings WHERE album_id = ANY($1)",
+				"DELETE FROM comments WHERE album_id = ANY($1)",
+				"DELETE FROM album_artists WHERE album_id = ANY($1)",
+			} {
+				if _, err := tx.Exec(r.Context(), q, ids); err != nil {
+					writeErr(w, 500, err.Error())
+					return
+				}
+			}
+			tag, err := tx.Exec(r.Context(), "DELETE FROM albums WHERE id = ANY($1)", ids)
+			if err != nil {
+				writeErr(w, 500, err.Error())
+				return
+			}
+			albums = tag.RowsAffected()
+		}
+		// follows has no FK to artists either.
+		if _, err := tx.Exec(r.Context(), "DELETE FROM follows WHERE artist_id=$1", id); err != nil {
+			writeErr(w, 500, err.Error())
+			return
+		}
+		if _, err := tx.Exec(r.Context(), "DELETE FROM artists WHERE id=$1", id); err != nil {
+			writeErr(w, 500, err.Error())
+			return
+		}
+	}
+
 	if err := tx.Commit(r.Context()); err != nil {
 		writeErr(w, 500, err.Error())
 		return
 	}
-	w.WriteHeader(204)
+	writeJSON(w, 200, map[string]any{"mode": mode, "albums": albums})
 }
 
 // mergeArtists folds duplicate artists into one: album credits move to the
