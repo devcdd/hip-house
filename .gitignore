@@ -6,3 +6,6 @@ dist/
 
 # Go build binary (apps/api)
 /apps/api/api
+
+# Local DB dumps (pg_dump)
+*.dump
