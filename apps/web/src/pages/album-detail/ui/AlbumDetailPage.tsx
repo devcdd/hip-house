@@ -7,6 +7,7 @@ import { useAuth } from '@/entities/session'
 import { FavoriteButton, useFavoriteIds } from '@/features/favorite-album'
 import { RatingControl, StarRating, useRatingMap } from '@/features/rate-album'
 import { CommentSection } from '@/features/album-comments'
+import { ReportButton } from '@/features/report-album'
 import { startKakaoLogin } from '@/features/auth'
 import { apiDelete, apiPost } from '@/shared/api/client'
 import { AlbumDetailSkeleton } from './AlbumDetailSkeleton'
@@ -107,6 +108,11 @@ export function AlbumDetailPage() {
                   {album.deleted_at ? '복구' : '삭제'}
                 </button>
               )}
+            </div>
+
+            {/* 별도 줄: 주요 액션보다 눈에 덜 띄게 */}
+            <div className={styles.report}>
+              <ReportButton albumId={album.id} />
             </div>
           </div>
         </div>

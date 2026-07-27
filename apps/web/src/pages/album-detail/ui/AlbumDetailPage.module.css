@@ -134,6 +134,11 @@
   gap: 10px;
 }
 
+.report {
+  margin-top: 4px;
+  margin-left: -12px; /* pull the borderless button back into the text column */
+}
+
 .loginHint {
   padding: 9px 16px;
   border: none;

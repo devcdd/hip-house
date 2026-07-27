@@ -78,6 +78,11 @@ func main() {
 	mux.HandleFunc("PUT /ratings/{albumId}", s.requireAuth(s.putRating))
 	mux.HandleFunc("DELETE /ratings/{albumId}", s.requireAuth(s.deleteRating))
 
+	// "힙합이 아니에요" 신고 — 사용자당 앨범 1건 (auth required)
+	mux.HandleFunc("GET /not-hiphop", s.requireAuth(s.listMyReports))
+	mux.HandleFunc("POST /albums/{id}/not-hiphop", s.requireAuth(s.addReport))
+	mux.HandleFunc("DELETE /albums/{id}/not-hiphop", s.requireAuth(s.removeReport))
+
 	// Comments — reads public, writing/deleting requires auth
 	mux.HandleFunc("GET /albums/{id}/comments", s.listComments)
 	mux.HandleFunc("POST /albums/{id}/comments", s.requireAuth(s.addComment))
@@ -102,6 +107,8 @@ func main() {
 	mux.HandleFunc("DELETE /artists/{id}", s.requireAdmin(s.deleteArtist))
 
 	mux.HandleFunc("GET /admin/stats", s.requireAdmin(s.adminStats))
+	mux.HandleFunc("GET /admin/not-hiphop", s.requireAdmin(s.adminListReports))
+	mux.HandleFunc("DELETE /admin/not-hiphop/{id}", s.requireAdmin(s.adminClearReports))
 
 	// Admin crawling — Spotify search + pull a picked artist's albums into the DB
 	mux.HandleFunc("GET /admin/spotify/keys", s.requireAdmin(s.adminSpotifyKeys))
@@ -160,6 +167,14 @@ func (s *server) ensureAuthSchema(ctx context.Context) error {
 			created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 			PRIMARY KEY (user_id, artist_id)
 		);
+		-- One row per user per album: the count is people, not clicks.
+		CREATE TABLE IF NOT EXISTS not_hiphop_reports (
+			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			album_id TEXT NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+			PRIMARY KEY (user_id, album_id)
+		);
+		CREATE INDEX IF NOT EXISTS idx_not_hiphop_album ON not_hiphop_reports(album_id);
 		-- parent_id NULL = top-level; replies are capped at one level in the handler.
 		CREATE TABLE IF NOT EXISTS comments (
 			id BIGSERIAL PRIMARY KEY,

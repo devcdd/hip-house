@@ -549,3 +549,64 @@
   font-weight: 800;
   letter-spacing: -0.02em;
 }
+
+/* --- 힙합 아님 신고 --- */
+
+.dimmed {
+  opacity: 0.45;
+}
+
+.reportCount {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #ff8a3d;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.reportActions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.reportDelete,
+.reportDismiss {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reportDelete {
+  background: #ff4d6d;
+  color: #fff;
+}
+
+.reportDismiss {
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.reportDismiss:hover:not(:disabled) {
+  color: var(--fg);
+}
+
+.reportDelete:disabled,
+.reportDismiss:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

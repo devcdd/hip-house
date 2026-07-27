@@ -223,6 +223,7 @@ func (s *server) deleteArtist(w http.ResponseWriter, r *http.Request) {
 				"DELETE FROM favorites WHERE album_id = ANY($1)",
 				"DELETE FROM ratings WHERE album_id = ANY($1)",
 				"DELETE FROM comments WHERE album_id = ANY($1)",
+				"DELETE FROM not_hiphop_reports WHERE album_id = ANY($1)",
 				"DELETE FROM album_artists WHERE album_id = ANY($1)",
 			} {
 				if _, err := tx.Exec(r.Context(), q, ids); err != nil {
