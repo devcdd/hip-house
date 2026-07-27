@@ -9,8 +9,8 @@
   border-radius: 50%;
   background: var(--fg);
   color: var(--bg);
-  font-size: 1.2rem;
-  font-weight: 700;
+  display: grid;
+  place-items: center;
   cursor: pointer;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
   transition: transform 0.15s ease, opacity 0.15s ease;

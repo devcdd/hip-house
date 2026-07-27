@@ -1,3 +1,4 @@
+import { Heart } from 'lucide-react'
 import { useToggleFavorite } from '@/features/favorite-album/model/useFavorites'
 import styles from './FavoriteButton.module.css'
 
@@ -22,7 +23,7 @@ export function FavoriteButton({ albumId, favorited, variant = 'overlay' }: Prop
         toggle.mutate({ id: albumId, favorited })
       }}
     >
-      <span>{favorited ? '♥' : '♡'}</span>
+      <Heart size={variant === 'inline' ? 16 : 18} strokeWidth={2.2} fill={favorited ? 'currentColor' : 'none'} />
       {variant === 'inline' && <span>{favorited ? '즐겨찾기 됨' : '즐겨찾기'}</span>}
     </button>
   )
