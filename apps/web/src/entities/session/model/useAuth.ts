@@ -1,22 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchMe, logout } from '@/entities/session/api/authApi'
 import type { User } from '@/entities/session/model/types'
 import { AUTH_CLEARED_EVENT, getRefreshToken, getToken, setTokens, clearToken } from '@/shared/lib/token'
 
 // Current session, resolved from the stored token via GET /me.
+//
+// The token is read from localStorage on every render rather than mirrored into
+// component state: useAuth runs in several components at once, and per-instance
+// state would only update in whichever one called signIn — the header would keep
+// showing 로그인 until something else forced it to re-render. The ['me'] cache is
+// the shared signal instead; writing it re-renders every consumer, which then
+// re-reads the token.
 export function useAuth() {
   const qc = useQueryClient()
-  // localStorage isn't reactive: the API layer can drop the session on its own
-  // (refresh token expired/revoked), so mirror it into state via the event it
-  // fires — otherwise the header keeps showing a signed-in user until a reload.
-  const [hasToken, setHasToken] = useState(() => !!getToken())
+  const hasToken = !!getToken()
 
+  // The API layer can drop the session on its own (refresh token expired or
+  // revoked). Clearing the cached user re-renders every consumer.
   useEffect(() => {
-    const onCleared = () => {
-      setHasToken(false)
-      qc.setQueryData(['me'], null)
-    }
+    const onCleared = () => qc.setQueryData(['me'], null)
     window.addEventListener(AUTH_CLEARED_EVENT, onCleared)
     return () => window.removeEventListener(AUTH_CLEARED_EVENT, onCleared)
   }, [qc])
@@ -31,7 +34,6 @@ export function useAuth() {
 
   const signIn = (token: string, refreshToken: string, u: User) => {
     setTokens(token, refreshToken)
-    setHasToken(true)
     qc.setQueryData(['me'], u)
   }
 
@@ -40,7 +42,6 @@ export function useAuth() {
     // goes away either way.
     void logout(getRefreshToken())
     clearToken()
-    setHasToken(false)
     qc.setQueryData(['me'], null)
     qc.removeQueries({ queryKey: ['favorites'] })
   }
