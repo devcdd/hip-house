@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Check, ChevronDown, Clock, Flame, ListMusic, Star } from 'lucide-react'
 import { SORT_OPTIONS, type SortKey } from '../model/types'
 import styles from './SortSelect.module.css'
@@ -20,9 +20,19 @@ const ICONS: Record<SortKey, typeof Clock> = {
 // "인기순" vs "별점 높은 순" needs the one-line explanation to be distinguishable.
 export function SortSelect({ value, onChange, disabledKeys = [] }: Props) {
   const [open, setOpen] = useState(false)
+  const [alignLeft, setAlignLeft] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const current = SORT_OPTIONS.find((o) => o.key === value) ?? SORT_OPTIONS[0]
   const CurrentIcon = ICONS[current.key]
+
+  // The trigger sits right in the wide layout (space-between) but wraps to the
+  // left when narrow. Anchor the menu toward the viewport center so it never
+  // spills off either edge. useLayoutEffect flips it before paint (no flash).
+  useLayoutEffect(() => {
+    if (!open || !root.current) return
+    const r = root.current.getBoundingClientRect()
+    setAlignLeft(r.left < window.innerWidth / 2)
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -54,7 +64,11 @@ export function SortSelect({ value, onChange, disabledKeys = [] }: Props) {
       </button>
 
       {open && (
-        <ul className={styles.menu} role="listbox" aria-label="정렬">
+        <ul
+          className={alignLeft ? `${styles.menu} ${styles.menuLeft}` : styles.menu}
+          role="listbox"
+          aria-label="정렬"
+        >
           {SORT_OPTIONS.map((o) => {
             const Icon = ICONS[o.key]
             const selected = o.key === value

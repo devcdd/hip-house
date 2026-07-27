@@ -46,6 +46,7 @@
   right: 0;
   z-index: 30;
   min-width: 232px;
+  max-width: calc(100vw - 16px); /* never wider than the viewport */
   margin: 0;
   padding: 6px;
   list-style: none;
@@ -54,6 +55,12 @@
   border: 1px solid color-mix(in srgb, var(--fg) 12%, transparent);
   box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
   animation: drop 0.14s ease;
+}
+
+/* Left-anchored when the trigger is in the viewport's left half (narrow/wrapped). */
+.menuLeft {
+  right: auto;
+  left: 0;
 }
 
 .option {
