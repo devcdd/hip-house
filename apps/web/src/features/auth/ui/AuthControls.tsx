@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Heart, Settings } from 'lucide-react'
+import { CircleUser, Settings } from 'lucide-react'
 import { useAuth } from '@/entities/session'
 import { startKakaoLogin } from '@/features/auth/lib/kakao'
 import styles from './AuthControls.module.css'
@@ -22,11 +22,9 @@ export function AuthControls() {
           <Settings size={17} />
         </Link>
       )}
-      <Link to="/favorites" className={styles.link} title="즐겨찾기" aria-label="즐겨찾기">
-        <Heart size={17} />
-      </Link>
-      <Link to="/me" className={styles.name} title="마이페이지">
-        {user?.nickname || '사용자'}
+      <Link to="/me" className={styles.me} title="마이페이지">
+        <CircleUser size={17} aria-hidden />
+        <span className={styles.name}>{user?.nickname || '사용자'}</span>
       </Link>
       <button type="button" className={styles.logout} onClick={signOut}>
         로그아웃
