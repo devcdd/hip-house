@@ -1,5 +1,11 @@
 import { useEffect, useRef } from 'react'
+import { Swiper, SwiperSlide } from 'swiper/react'
+import { FreeMode, Mousewheel } from 'swiper/modules'
+import type { Swiper as SwiperClass } from 'swiper'
 import type { YearOption } from '../model/types'
+import 'swiper/css'
+import 'swiper/css/free-mode'
+import 'swiper/css/mousewheel'
 import styles from './YearFilter.module.css'
 
 interface Props {
@@ -8,29 +14,44 @@ interface Props {
   onChange: (year: YearOption) => void
 }
 
-// Horizontal swipe row (native touch scroll) — years no longer wrap and push
-// the feed down. The active chip auto-centers itself.
+// Horizontal year strip on Swiper: drag + flick-momentum (freeMode), horizontal
+// wheel, grab cursor. Swiper also suppresses the click that ends a drag.
 export function YearFilter({ years, value, onChange }: Props) {
-  const activeRef = useRef<HTMLButtonElement>(null)
+  const swiperRef = useRef<SwiperClass | null>(null)
 
+  // Bring the selected year into view when it changes (e.g. cleared from URL).
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
-  }, [value])
+    const i = years.indexOf(value)
+    if (i >= 0) swiperRef.current?.slideTo(i)
+  }, [value, years])
 
   return (
-    <div className={styles.tabs} role="tablist" aria-label="연도 필터">
+    <Swiper
+      onSwiper={(s) => {
+        swiperRef.current = s
+      }}
+      modules={[FreeMode, Mousewheel]}
+      freeMode={{ enabled: true, momentum: true }}
+      mousewheel={{ forceToAxis: true }}
+      grabCursor
+      slidesPerView="auto"
+      spaceBetween={8}
+      className={styles.tabs}
+      role="tablist"
+      aria-label="연도 필터"
+    >
       {years.map((y) => (
-        <button
-          key={y}
-          ref={y === value ? activeRef : undefined}
-          role="tab"
-          aria-selected={y === value}
-          className={y === value ? `${styles.tab} ${styles.active}` : styles.tab}
-          onClick={() => onChange(y)}
-        >
-          {y}
-        </button>
+        <SwiperSlide key={y} className={styles.slide}>
+          <button
+            role="tab"
+            aria-selected={y === value}
+            className={y === value ? `${styles.tab} ${styles.active}` : styles.tab}
+            onClick={() => onChange(y)}
+          >
+            {y}
+          </button>
+        </SwiperSlide>
       ))}
-    </div>
+    </Swiper>
   )
 }

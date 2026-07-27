@@ -1,18 +1,18 @@
+/* Swiper root (.swiper). Swiper owns overflow/drag/cursor — keep this minimal
+   so its wrapper/slide layout isn't overridden. min-width:0 stops the flex
+   parent from letting the nowrap slide row blow the root past the container. */
 .tabs {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
+  min-width: 0;
+  max-width: 100%;
   padding: 2px 0;
-  -webkit-overflow-scrolling: touch; /* momentum swipe on iOS */
-  scrollbar-width: none;
 }
 
-.tabs::-webkit-scrollbar {
-  display: none;
+/* slidesPerView="auto" → each slide sizes to its chip. */
+.slide {
+  width: auto;
 }
 
 .tab {
-  flex: 0 0 auto;
   padding: 8px 18px;
   border: none;
   border-radius: 999px;
@@ -21,6 +21,7 @@
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
