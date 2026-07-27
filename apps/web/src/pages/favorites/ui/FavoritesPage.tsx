@@ -1,12 +1,14 @@
 import { AlbumCard, AlbumCardSkeleton } from '@/entities/album'
 import { useAuth } from '@/entities/session'
 import { FavoriteButton, useFavoriteAlbums } from '@/features/favorite-album'
+import { StarRating, useRatingMap } from '@/features/rate-album'
 import { startKakaoLogin } from '@/features/auth'
 import styles from './FavoritesPage.module.css'
 
 export function FavoritesPage() {
   const { isAuthed } = useAuth()
   const { data: albums, isLoading } = useFavoriteAlbums(isAuthed)
+  const ratings = useRatingMap(isAuthed)
 
   if (!isAuthed) {
     return (
@@ -28,6 +30,8 @@ export function FavoritesPage() {
           <div key={a.id} className={styles.item}>
             <FavoriteButton albumId={a.id} favorited />
             <AlbumCard album={a} />
+            {/* Read-only here — rating is edited on the album detail page. */}
+            {ratings.has(a.id) && <StarRating score={ratings.get(a.id)!} size={15} />}
           </div>
         ))}
         {isLoading &&

@@ -1,9 +1,11 @@
 import { Fragment } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft, ExternalLink, RotateCcw, Trash2 } from 'lucide-react'
 import { useAlbum } from '@/entities/album'
 import { useAuth } from '@/entities/session'
 import { FavoriteButton, useFavoriteIds } from '@/features/favorite-album'
+import { RatingControl, StarRating, useRatingMap } from '@/features/rate-album'
 import { startKakaoLogin } from '@/features/auth'
 import { apiDelete, apiPost } from '@/shared/api/client'
 import { AlbumDetailSkeleton } from './AlbumDetailSkeleton'
@@ -16,6 +18,7 @@ export function AlbumDetailPage() {
   const { data: album, isLoading: loading, error } = useAlbum(id)
   const { isAuthed, isAdmin } = useAuth()
   const favIds = useFavoriteIds(isAuthed)
+  const ratings = useRatingMap(isAuthed)
 
   // Admin soft-delete / restore.
   const toggleDelete = useMutation({
@@ -31,7 +34,8 @@ export function AlbumDetailPage() {
     <div className={styles.page}>
       {/* Back to the exact previous URL so list filters (in the query string) survive. */}
       <button type="button" onClick={() => navigate(-1)} className={styles.back}>
-        ← 목록
+        <ArrowLeft size={16} strokeWidth={2.4} />
+        목록
       </button>
 
       {loading && <AlbumDetailSkeleton />}
@@ -68,6 +72,21 @@ export function AlbumDetailPage() {
               {album.total_tracks != null && <Fact label="트랙 수" value={`${album.total_tracks}곡`} />}
             </dl>
 
+            {/* Everyone sees the album's average; only members can add their own. */}
+            <div className={styles.rating}>
+              {album.rating_count > 0 && album.rating_avg != null ? (
+                <div className={styles.average}>
+                  <span className={styles.avgScore}>{album.rating_avg.toFixed(1)}</span>
+                  {/* rating_avg is in stars; StarRating counts half-stars. */}
+                  <StarRating score={Math.round(album.rating_avg * 2)} size={16} />
+                  <span className={styles.avgCount}>{album.rating_count}명 평가</span>
+                </div>
+              ) : (
+                <p className={styles.average}>아직 평가가 없습니다</p>
+              )}
+              {isAuthed && <RatingControl albumId={album.id} score={ratings.get(album.id) ?? 0} />}
+            </div>
+
             <div className={styles.actions}>
               {isAuthed ? (
                 <FavoriteButton albumId={album.id} favorited={favIds.has(album.id)} variant="inline" />
@@ -78,7 +97,8 @@ export function AlbumDetailPage() {
               )}
               {album.spotify_url && (
                 <a className={styles.spotify} href={album.spotify_url} target="_blank" rel="noreferrer">
-                  Spotify에서 열기 ↗
+                  Spotify에서 열기
+                  <ExternalLink size={15} strokeWidth={2.2} />
                 </a>
               )}
               {isAdmin && (
@@ -88,6 +108,7 @@ export function AlbumDetailPage() {
                   disabled={toggleDelete.isPending}
                   onClick={() => toggleDelete.mutate(!!album.deleted_at)}
                 >
+                  {album.deleted_at ? <RotateCcw size={15} strokeWidth={2.4} /> : <Trash2 size={15} strokeWidth={2.4} />}
                   {album.deleted_at ? '복구' : '삭제'}
                 </button>
               )}

@@ -72,8 +72,29 @@
   color: var(--muted);
 }
 
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  min-height: 15px;
+}
+
 .year {
   font-size: 0.72rem;
   color: var(--muted);
-  margin-top: 2px;
+}
+
+.rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #f5b301;
+}
+
+.count {
+  font-weight: 600;
+  color: var(--muted);
 }

@@ -8,6 +8,9 @@
 }
 
 .back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   color: var(--muted);
   font-size: 0.9rem;
   font-weight: 600;
@@ -95,6 +98,34 @@
   font-weight: 600;
 }
 
+.rating {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.average {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.avgScore {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--fg);
+  line-height: 1;
+}
+
+.avgCount {
+  font-weight: 600;
+}
+
 .actions {
   margin-top: 12px;
   display: flex;
@@ -116,6 +147,9 @@
 
 .delete,
 .restore {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 9px 16px;
   border: none;
   border-radius: 999px;
@@ -152,6 +186,9 @@
 }
 
 .spotify {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   width: fit-content;
   padding: 10px 18px;
   border-radius: 999px;

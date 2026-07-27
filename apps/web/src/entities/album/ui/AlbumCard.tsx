@@ -1,5 +1,6 @@
 import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
+import { Star } from 'lucide-react'
 import type { Album } from '@/entities/album/model/types'
 import styles from './AlbumCard.module.css'
 
@@ -31,9 +32,19 @@ export function AlbumCard({ album }: { album: Album }) {
             </Fragment>
           ))}
         </div>
-        {(album.release_date ?? album.year) != null && (
-          <span className={styles.year}>{album.release_date ?? album.year}</span>
-        )}
+        <div className={styles.footer}>
+          {(album.release_date ?? album.year) != null && (
+            <span className={styles.year}>{album.release_date ?? album.year}</span>
+          )}
+          {/* Makes 인기순 / 별점 높은 순 legible — hidden until someone rates it. */}
+          {album.rating_count > 0 && album.rating_avg != null && (
+            <span className={styles.rating} title={`평균 별점 ${album.rating_avg.toFixed(1)} · ${album.rating_count}명`}>
+              <Star size={12} strokeWidth={2.2} fill="currentColor" />
+              {album.rating_avg.toFixed(1)}
+              <span className={styles.count}>({album.rating_count})</span>
+            </span>
+          )}
+        </div>
       </div>
     </article>
   )
