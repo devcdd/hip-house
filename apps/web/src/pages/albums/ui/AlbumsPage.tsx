@@ -7,7 +7,7 @@ import {
   toTypeParam,
   toSortParam,
   parseTypes,
-  type SortKey,
+  parseSort,
 } from '@/features/album-filters'
 import { AlbumFeed } from '@/widgets/album-feed'
 import styles from './AlbumsPage.module.css'
@@ -20,8 +20,7 @@ export function AlbumsPage() {
   const yearRaw = search.get('year')
   const year: YearOption = yearRaw && /^\d+$/.test(yearRaw) ? Number(yearRaw) : ALL
   const types = parseTypes(search.get('type'))
-  const sortRaw = search.get('sort')
-  const sort: SortKey = sortRaw === 'tracks' || sortRaw === 'popular' ? sortRaw : 'recent'
+  const sort = parseSort(search.get('sort'))
 
   // "트랙 많은 순"은 싱글만 선택했을 땐 의미 없음.
   const singleOnly = types.length === 1 && types[0] === 'single'

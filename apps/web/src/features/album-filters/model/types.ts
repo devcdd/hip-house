@@ -1,5 +1,5 @@
 export type AlbumType = 'single' | 'ep' | 'album'
-export type SortKey = 'recent' | 'tracks' | 'popular'
+export type SortKey = 'recent' | 'popular' | 'rating' | 'tracks'
 
 // Multi-select types -> comma-separated server param (undefined = 전체).
 export const toTypeParam = (types: AlbumType[]): string | undefined => (types.length ? types.join(',') : undefined)
@@ -18,8 +18,13 @@ export const TYPE_OPTIONS: { key: AlbumType; label: string }[] = [
   { key: 'album', label: '정규' },
 ]
 
-export const SORT_OPTIONS: { key: SortKey; label: string; disabled?: boolean }[] = [
-  { key: 'recent', label: '최신순' },
-  { key: 'tracks', label: '트랙 많은 순' },
-  { key: 'popular', label: '인기순', disabled: true },
+export const SORT_OPTIONS: { key: SortKey; label: string; hint: string }[] = [
+  { key: 'recent', label: '최신순', hint: '발매일이 최근인 앨범부터' },
+  { key: 'popular', label: '인기순', hint: '별점을 많이 받은 앨범부터' },
+  { key: 'rating', label: '별점 높은 순', hint: '평균 별점이 높은 앨범부터' },
+  { key: 'tracks', label: '트랙 많은 순', hint: '수록곡이 많은 앨범부터' },
 ]
+
+const VALID_SORTS = new Set<SortKey>(SORT_OPTIONS.map((o) => o.key))
+export const parseSort = (raw: string | null): SortKey =>
+  VALID_SORTS.has(raw as SortKey) ? (raw as SortKey) : 'recent'

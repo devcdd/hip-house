@@ -1,5 +1,12 @@
-.select {
-  padding: 8px 16px;
+.root {
+  position: relative;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px 8px 13px;
   border: none;
   border-radius: 999px;
   background: var(--surface);
@@ -7,9 +14,116 @@
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s ease;
 }
 
-.select:focus {
-  outline: 2px solid var(--muted);
-  outline-offset: -1px;
+.trigger:hover {
+  background: color-mix(in srgb, var(--fg) 12%, var(--surface));
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 1px;
+}
+
+.triggerIcon {
+  color: var(--muted);
+}
+
+.chevron,
+.chevronOpen {
+  color: var(--muted);
+  transition: transform 0.18s ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  min-width: 232px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border-radius: 14px;
+  background: var(--bg);
+  border: 1px solid color-mix(in srgb, var(--fg) 12%, transparent);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
+  animation: drop 0.14s ease;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--fg);
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:hover:not(:disabled) {
+  background: var(--surface);
+}
+
+.option:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.optionIcon {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.selected .optionIcon,
+.check {
+  color: var(--fg);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1 1 auto;
+}
+
+.label {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.selected .label {
+  font-weight: 800;
+}
+
+.hint {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+@keyframes drop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu {
+    animation: none;
+  }
+
+  .chevron,
+  .chevronOpen {
+    transition: none;
+  }
 }
