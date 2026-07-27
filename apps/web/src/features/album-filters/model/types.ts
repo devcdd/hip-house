@@ -28,3 +28,26 @@ export const SORT_OPTIONS: { key: SortKey; label: string; hint: string }[] = [
 const VALID_SORTS = new Set<SortKey>(SORT_OPTIONS.map((o) => o.key))
 export const parseSort = (raw: string | null): SortKey =>
   VALID_SORTS.has(raw as SortKey) ? (raw as SortKey) : 'recent'
+
+// The whole list query (year + type + sort) is remembered as one string rather
+// than field by field — it's the same thing the URL already encodes, so there's
+// nothing to keep in sync. The URL still wins; this only fills in when the list
+// is opened with no query at all. Storage can throw (Safari private mode) and a
+// lost filter isn't worth crashing the page over.
+const FILTER_STORAGE_KEY = 'hiphouse:album-filters'
+
+export function readStoredFilters(): string {
+  try {
+    return sessionStorage.getItem(FILTER_STORAGE_KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+export function storeFilters(query: string) {
+  try {
+    sessionStorage.setItem(FILTER_STORAGE_KEY, query)
+  } catch {
+    /* filters just won't persist */
+  }
+}

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { YearFilter, useYears, toYearParam, ALL, type YearOption } from '@/features/filter-albums-by-year'
 import {
@@ -8,6 +8,8 @@ import {
   toSortParam,
   parseTypes,
   parseSort,
+  readStoredFilters,
+  storeFilters,
 } from '@/features/album-filters'
 import { AlbumFeed } from '@/widgets/album-feed'
 import styles from './AlbumsPage.module.css'
@@ -31,8 +33,17 @@ export function AlbumsPage() {
       if (v) p.set(k, v)
       else p.delete(k)
     }
+    storeFilters(p.toString())
     setSearch(p, { replace: true })
   }
+
+  // Opened with no query at all (logo click, fresh tab) → restore the last
+  // filters. Any explicit query, including one cleared back to empty, wins.
+  const query = search.toString()
+  useEffect(() => {
+    const stored = readStoredFilters()
+    if (query === '' && stored !== '') setSearch(stored, { replace: true })
+  }, [query])
 
   const typeParam = toTypeParam(types)
   const params = useMemo(
