@@ -21,15 +21,15 @@
     padding: 12px 16px;
   }
 
-  /* brand pushes the icon controls to the right edge once search wraps below */
-  .brand {
-    margin-right: auto;
-  }
 }
 
-/* Stands in for the flex:1 search bar so controls stay right-aligned when hidden. */
-.spacer {
-  flex: 1;
+/* The search bar is capped at 320px, so the leftover space would otherwise pile
+   up after the controls and shift them left on pages that show it. */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
 }
 
 .brand {
