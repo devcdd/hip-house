@@ -77,6 +77,32 @@ func TestBuildAlbumListQuery(t *testing.T) {
 	}
 }
 
+func TestOrderClause(t *testing.T) {
+	// Both rating sorts must still fall back to the date order so unrated albums
+	// (rating_count 0 / rating_avg NULL) stay newest-first at the bottom.
+	for _, tc := range []struct{ sort, wantPrefix string }{
+		{"rating", "rating_avg DESC NULLS LAST, rating_count DESC, "},
+		{"popular", "rating_count DESC, rating_avg DESC NULLS LAST, "},
+	} {
+		got := orderClause(tc.sort)
+		if !strings.HasPrefix(got, tc.wantPrefix) {
+			t.Errorf("orderClause(%q) = %q, want prefix %q", tc.sort, got, tc.wantPrefix)
+		}
+		if !strings.HasSuffix(got, byDate) {
+			t.Errorf("orderClause(%q) = %q, want date fallback tail", tc.sort, got)
+		}
+	}
+	if orderClause("nonsense") != byDate {
+		t.Errorf("unknown sort should fall back to date order")
+	}
+	// The aliases the rating sorts reference must exist in the SELECT list.
+	for _, alias := range []string{"AS rating_avg", "AS rating_count"} {
+		if !strings.Contains(albumSelectCols, alias) {
+			t.Errorf("albumSelectCols missing %q", alias)
+		}
+	}
+}
+
 func TestSpotifyCreds(t *testing.T) {
 	t.Setenv("SPOTIFY_CLIENT_ID", "plain")
 	t.Setenv("SPOTIFY_CLIENT_SECRET", "s")

@@ -64,6 +64,11 @@ func main() {
 	mux.HandleFunc("POST /favorites", s.requireAuth(s.addFavorite))
 	mux.HandleFunc("DELETE /favorites/{albumId}", s.requireAuth(s.removeFavorite))
 
+	// Ratings (auth required) — the caller's own scores, half-star granularity
+	mux.HandleFunc("GET /ratings", s.requireAuth(s.listRatings))
+	mux.HandleFunc("PUT /ratings/{albumId}", s.requireAuth(s.putRating))
+	mux.HandleFunc("DELETE /ratings/{albumId}", s.requireAuth(s.deleteRating))
+
 	// Albums — reads public, writes admin-only
 	mux.HandleFunc("GET /albums", s.listAlbums)
 	mux.HandleFunc("GET /albums/years", s.listYears)
@@ -111,6 +116,16 @@ func (s *server) ensureAuthSchema(ctx context.Context) error {
 			created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 			PRIMARY KEY (user_id, album_id)
 		);
+		-- score is in half-stars: 1..10 == 0.5..5.0 stars.
+		CREATE TABLE IF NOT EXISTS ratings (
+			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			album_id TEXT NOT NULL,
+			score SMALLINT NOT NULL CHECK (score BETWEEN 1 AND 10),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+			PRIMARY KEY (user_id, album_id)
+		);
+		-- PK is (user_id, album_id); the rating_avg/rating_count aggregates look up by album.
+		CREATE INDEX IF NOT EXISTS idx_ratings_album ON ratings(album_id);
 		ALTER TABLE IF EXISTS albums ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 
 		-- Normalize album↔artist into a many-to-many join (was albums.artist_id/artist_name).

@@ -43,9 +43,13 @@ type Album struct {
 	ImageURL    *string `json:"image_url" db:"image_url"`
 	SpotifyURL  *string `json:"spotify_url" db:"spotify_url"`
 	// Read-only, computed on SELECT (not written to the albums table).
-	TypeLabel *string       `json:"type_label" db:"type_label"`
-	DeletedAt *string       `json:"deleted_at" db:"deleted_at"`
-	Artists   []AlbumArtist `json:"artists" db:"artists"` // aggregated from album_artists, ordered by position
+	TypeLabel *string `json:"type_label" db:"type_label"`
+	// Rating aggregates over the ratings table. RatingAvg is in stars (0..5),
+	// null when nobody has rated the album yet; RatingCount is then 0.
+	RatingAvg   *float64      `json:"rating_avg" db:"rating_avg"`
+	RatingCount int           `json:"rating_count" db:"rating_count"`
+	DeletedAt   *string       `json:"deleted_at" db:"deleted_at"`
+	Artists     []AlbumArtist `json:"artists" db:"artists"` // aggregated from album_artists, ordered by position
 }
 
 // albumCols: writable scalar columns on the albums table (INSERT/UPDATE).
@@ -57,6 +61,8 @@ const albumSelectCols = albumCols + `,
 	     WHEN album_type='single' AND total_tracks >= 3 THEN 'EP'
 	     WHEN album_type='single' THEN '싱글'
 	     ELSE album_type END AS type_label,
+	(SELECT AVG(score)::float / 2 FROM ratings rt WHERE rt.album_id = albums.id) AS rating_avg,
+	(SELECT COUNT(*) FROM ratings rt WHERE rt.album_id = albums.id)::int AS rating_count,
 	deleted_at::text AS deleted_at,
 	COALESCE((
 		SELECT json_agg(json_build_object('id', ar.id, 'name', ar.name, 'image_url', ar.image_url, 'genres', ar.genres, 'spotify_url', ar.spotify_url) ORDER BY aa.position)
@@ -64,13 +70,26 @@ const albumSelectCols = albumCols + `,
 		WHERE aa.album_id = albums.id
 	), '[]'::json) AS artists`
 
-// orderClause maps a sort key to a whitelisted ORDER BY (never interpolate raw input).
+// byDate is the fallback tail every sort ends with: unrated albums (and ties in
+// general) keep falling back to newest-first. release_date is ISO text, so it
+// sorts chronologically as-is.
+const byDate = "release_date DESC NULLS LAST, year DESC NULLS LAST, name"
+
+// orderClause maps a sort key to a whitelisted ORDER BY (never interpolate raw
+// input). rating_avg / rating_count are output aliases from albumSelectCols.
 func orderClause(sort string) string {
 	switch sort {
 	case "tracks":
 		return "total_tracks DESC NULLS LAST, name"
-	default: // "recent" and anything unknown — release_date is ISO text, sorts chronologically
-		return "release_date DESC NULLS LAST, year DESC NULLS LAST, name"
+	case "rating":
+		// Highest average first; more raters breaks ties between equal averages.
+		return "rating_avg DESC NULLS LAST, rating_count DESC, " + byDate
+	case "popular":
+		// Most-rated first, then highest average. rating_count is 0 (never null)
+		// for unrated albums, so they land at the bottom ordered by date.
+		return "rating_count DESC, rating_avg DESC NULLS LAST, " + byDate
+	default: // "recent" and anything unknown
+		return byDate
 	}
 }
 
