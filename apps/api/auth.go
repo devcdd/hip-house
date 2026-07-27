@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -196,10 +197,12 @@ func (s *server) loginKakao(w http.ResponseWriter, r *http.Request) {
 	if s.adminIDs[id] {
 		role = "admin"
 	}
-	// Upsert: keep existing role unless promoted via env allowlist.
+	// Upsert: nickname is set on first login only; a returning user keeps their
+	// (possibly self-edited via PUT /me) nickname. Role is refreshed from the env
+	// allowlist but never demoted here.
 	_, err = s.db.Exec(r.Context(),
 		`INSERT INTO users(id,nickname,role) VALUES($1,$2,$3)
-		 ON CONFLICT(id) DO UPDATE SET nickname=EXCLUDED.nickname,
+		 ON CONFLICT(id) DO UPDATE SET
 		   role=CASE WHEN $3='admin' THEN 'admin' ELSE users.role END`,
 		id, nickname, role)
 	if err != nil {
@@ -226,6 +229,42 @@ func (s *server) me(w http.ResponseWriter, r *http.Request) {
 	if err := s.db.QueryRow(r.Context(), "SELECT id,nickname,role FROM users WHERE id=$1", currentUser(r).ID).
 		Scan(&u.ID, &u.Nickname, &u.Role); err != nil {
 		writeErr(w, 404, "user not found")
+		return
+	}
+	writeJSON(w, 200, u)
+}
+
+// validateNickname trims and bounds a nickname; returns (clean, errMsg).
+// Pure so it can be unit-tested without a DB.
+func validateNickname(raw string) (string, string) {
+	n := strings.TrimSpace(raw)
+	switch {
+	case n == "":
+		return "", "nickname is required"
+	case utf8.RuneCountInString(n) > 20:
+		return "", "nickname too long (max 20)"
+	}
+	return n, ""
+}
+
+// updateMe lets the signed-in user change their own nickname (PUT /me).
+func (s *server) updateMe(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Nickname string `json:"nickname"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	nick, msg := validateNickname(body.Nickname)
+	if msg != "" {
+		writeErr(w, 400, msg)
+		return
+	}
+	var u User
+	if err := s.db.QueryRow(r.Context(),
+		"UPDATE users SET nickname=$2 WHERE id=$1 RETURNING id,nickname,role",
+		currentUser(r).ID, nick).Scan(&u.ID, &u.Nickname, &u.Role); err != nil {
+		writeErr(w, 500, err.Error())
 		return
 	}
 	writeJSON(w, 200, u)

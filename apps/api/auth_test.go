@@ -1,6 +1,32 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
+
+func TestValidateNickname(t *testing.T) {
+	cases := []struct {
+		in      string
+		want    string
+		wantErr bool
+	}{
+		{"  집주인  ", "집주인", false}, // trimmed
+		{"", "", true},              // empty
+		{"   ", "", true},           // whitespace only
+		{strings.Repeat("가", 20), strings.Repeat("가", 20), false}, // 20 runes ok
+		{strings.Repeat("가", 21), "", true},                       // 21 runes too long
+	}
+	for _, c := range cases {
+		got, msg := validateNickname(c.in)
+		if c.wantErr && msg == "" {
+			t.Errorf("validateNickname(%q): expected error, got clean %q", c.in, got)
+		}
+		if !c.wantErr && (msg != "" || got != c.want) {
+			t.Errorf("validateNickname(%q) = (%q,%q), want (%q,\"\")", c.in, got, msg, c.want)
+		}
+	}
+}
 
 func TestTokenRoundTrip(t *testing.T) {
 	s := &server{jwtSecret: []byte("test-secret")}

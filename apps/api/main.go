@@ -58,16 +58,28 @@ func main() {
 	// Auth
 	mux.HandleFunc("POST /auth/kakao", s.loginKakao)
 	mux.HandleFunc("GET /me", s.requireAuth(s.me))
+	mux.HandleFunc("PUT /me", s.requireAuth(s.updateMe))
 
 	// Favorites (auth required)
 	mux.HandleFunc("GET /favorites", s.requireAuth(s.listFavorites))
 	mux.HandleFunc("POST /favorites", s.requireAuth(s.addFavorite))
 	mux.HandleFunc("DELETE /favorites/{albumId}", s.requireAuth(s.removeFavorite))
 
+	// Artist follows (auth required)
+	mux.HandleFunc("GET /follows", s.requireAuth(s.listFollows))
+	mux.HandleFunc("POST /follows", s.requireAuth(s.addFollow))
+	mux.HandleFunc("DELETE /follows/{artistId}", s.requireAuth(s.removeFollow))
+
 	// Ratings (auth required) — the caller's own scores, half-star granularity
 	mux.HandleFunc("GET /ratings", s.requireAuth(s.listRatings))
+	mux.HandleFunc("GET /ratings/albums", s.requireAuth(s.listRatedAlbums))
 	mux.HandleFunc("PUT /ratings/{albumId}", s.requireAuth(s.putRating))
 	mux.HandleFunc("DELETE /ratings/{albumId}", s.requireAuth(s.deleteRating))
+
+	// Comments — reads public, writing/deleting requires auth
+	mux.HandleFunc("GET /albums/{id}/comments", s.listComments)
+	mux.HandleFunc("POST /albums/{id}/comments", s.requireAuth(s.addComment))
+	mux.HandleFunc("DELETE /comments/{id}", s.requireAuth(s.deleteComment))
 
 	// Albums — reads public, writes admin-only
 	mux.HandleFunc("GET /albums", s.listAlbums)
@@ -126,6 +138,25 @@ func (s *server) ensureAuthSchema(ctx context.Context) error {
 		);
 		-- PK is (user_id, album_id); the rating_avg/rating_count aggregates look up by album.
 		CREATE INDEX IF NOT EXISTS idx_ratings_album ON ratings(album_id);
+		-- artist_id has no FK: the crawler owns artists and rewrites it freely.
+		CREATE TABLE IF NOT EXISTS follows (
+			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			artist_id TEXT NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+			PRIMARY KEY (user_id, artist_id)
+		);
+		-- parent_id NULL = top-level; replies are capped at one level in the handler.
+		CREATE TABLE IF NOT EXISTS comments (
+			id BIGSERIAL PRIMARY KEY,
+			album_id TEXT NOT NULL,
+			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			parent_id BIGINT REFERENCES comments(id) ON DELETE CASCADE,
+			body TEXT NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+			deleted_at TIMESTAMPTZ
+		);
+		CREATE INDEX IF NOT EXISTS idx_comments_album ON comments(album_id, id);
+		CREATE INDEX IF NOT EXISTS idx_comments_parent ON comments(parent_id);
 		ALTER TABLE IF EXISTS albums ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 
 		-- Normalize album↔artist into a many-to-many join (was albums.artist_id/artist_name).

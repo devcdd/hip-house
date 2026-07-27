@@ -29,6 +29,24 @@ func (s *server) listRatings(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, ratings)
 }
 
+// listRatedAlbums returns the full album rows the user has rated, most-recently
+// rated first — mirrors listFavorites so the my-page can render album cards.
+func (s *server) listRatedAlbums(w http.ResponseWriter, r *http.Request) {
+	rows, err := s.db.Query(r.Context(),
+		"SELECT "+albumSelectCols+" FROM albums JOIN ratings rt ON rt.album_id=albums.id "+
+			"WHERE rt.user_id=$1 ORDER BY rt.updated_at DESC", currentUser(r).ID)
+	if err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	albums, err := pgx.CollectRows(rows, pgx.RowToStructByName[Album])
+	if err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	writeJSON(w, 200, albums)
+}
+
 func (s *server) putRating(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Score int `json:"score"`
