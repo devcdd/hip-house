@@ -41,6 +41,19 @@ a {
   text-decoration: none;
 }
 
+/* iOS Safari zooms the page whenever a focused field's text is under 16px.
+   Bumping the font on touch devices is the fix; capping maximum-scale in the
+   viewport meta would also stop it, but it kills pinch-zoom for everyone.
+   !important because every field is styled from a CSS module, whose class
+   selector outranks this element selector. */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* Chips, tabs and badges are things you click, not text you copy — dragging
    across them should never leave a highlight. One rule instead of the same
    declaration in every filter's CSS module. */
