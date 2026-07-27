@@ -9,7 +9,7 @@ import (
 // listFavorites returns the current user's favorited albums (full album rows).
 func (s *server) listFavorites(w http.ResponseWriter, r *http.Request) {
 	rows, err := s.db.Query(r.Context(),
-		"SELECT "+albumCols+" FROM albums a JOIN favorites f ON f.album_id=a.id "+
+		"SELECT "+albumSelectCols+" FROM albums JOIN favorites f ON f.album_id=albums.id "+
 			"WHERE f.user_id=$1 ORDER BY f.created_at DESC", currentUser(r).ID)
 	if err != nil {
 		writeErr(w, 500, err.Error())
