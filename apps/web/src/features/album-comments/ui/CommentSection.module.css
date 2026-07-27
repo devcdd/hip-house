@@ -1,0 +1,206 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.count {
+  color: var(--muted);
+}
+
+/* --- form --- */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--fg) 14%, transparent);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  /* Drag-resizing shifted the whole comment list — keep the box fixed. */
+  resize: none;
+}
+
+.textarea:focus {
+  outline: 2px solid var(--fg);
+  outline-offset: -1px;
+}
+
+.formActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.counter {
+  margin-right: auto;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.submit {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.submit:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.cancel {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.login {
+  width: fit-content;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* --- list --- */
+
+.list,
+.thread {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.comment,
+.reply {
+  display: flex;
+  gap: 8px;
+}
+
+.reply {
+  margin-left: 22px;
+}
+
+.replyIcon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--muted);
+}
+
+.body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.nickname {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.delete {
+  display: inline-grid;
+  place-items: center;
+  padding: 2px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.delete:hover {
+  color: #ff4d6d;
+}
+
+.text,
+.removed {
+  margin: 4px 0 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.removed {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.replyBtn {
+  margin-top: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.replyBtn:hover {
+  color: var(--fg);
+}
+
+.replyForm {
+  margin: 12px 0 0 22px;
+}
+
+.state {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin: 0;
+}

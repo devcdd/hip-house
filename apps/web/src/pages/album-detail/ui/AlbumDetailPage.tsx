@@ -1,11 +1,12 @@
 import { Fragment } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, ExternalLink, RotateCcw, Trash2 } from 'lucide-react'
+import { ArrowLeft, RotateCcw, Trash2 } from 'lucide-react'
 import { useAlbum } from '@/entities/album'
 import { useAuth } from '@/entities/session'
 import { FavoriteButton, useFavoriteIds } from '@/features/favorite-album'
 import { RatingControl, StarRating, useRatingMap } from '@/features/rate-album'
+import { CommentSection } from '@/features/album-comments'
 import { startKakaoLogin } from '@/features/auth'
 import { apiDelete, apiPost } from '@/shared/api/client'
 import { AlbumDetailSkeleton } from './AlbumDetailSkeleton'
@@ -84,22 +85,16 @@ export function AlbumDetailPage() {
               ) : (
                 <p className={styles.average}>아직 평가가 없습니다</p>
               )}
-              {isAuthed && <RatingControl albumId={album.id} score={ratings.get(album.id) ?? 0} />}
             </div>
 
             <div className={styles.actions}>
+              {isAuthed && <RatingControl albumId={album.id} score={ratings.get(album.id) ?? 0} />}
               {isAuthed ? (
                 <FavoriteButton albumId={album.id} favorited={favIds.has(album.id)} variant="inline" />
               ) : (
                 <button type="button" className={styles.loginHint} onClick={startKakaoLogin}>
                   로그인하고 즐겨찾기
                 </button>
-              )}
-              {album.spotify_url && (
-                <a className={styles.spotify} href={album.spotify_url} target="_blank" rel="noreferrer">
-                  Spotify에서 열기
-                  <ExternalLink size={15} strokeWidth={2.2} />
-                </a>
               )}
               {isAdmin && (
                 <button
@@ -130,6 +125,8 @@ export function AlbumDetailPage() {
           />
         </section>
       )}
+
+      {album && <CommentSection albumId={album.id} />}
     </div>
   )
 }
