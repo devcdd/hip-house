@@ -21,7 +21,7 @@ export function AuthCallbackPage() {
     }
     loginWithKakao(code, kakaoRedirectUri())
       .then((res) => {
-        signIn(res.token, res.user)
+        signIn(res.token, res.refresh_token, res.user)
         navigate('/', { replace: true })
       })
       .catch((e: unknown) => setError(String(e)))

@@ -57,6 +57,8 @@ func main() {
 
 	// Auth
 	mux.HandleFunc("POST /auth/kakao", s.loginKakao)
+	mux.HandleFunc("POST /auth/refresh", s.refreshSession)
+	mux.HandleFunc("POST /auth/logout", s.logout)
 	mux.HandleFunc("GET /me", s.requireAuth(s.me))
 	mux.HandleFunc("PUT /me", s.requireAuth(s.updateMe))
 
@@ -124,6 +126,17 @@ func (s *server) ensureAuthSchema(ctx context.Context) error {
 			role TEXT NOT NULL DEFAULT 'user',
 			created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 		);
+		-- Only the SHA-256 of each refresh token is stored; rotation revokes the
+		-- old row on every use so a replayed token is detectable.
+		CREATE TABLE IF NOT EXISTS refresh_tokens (
+			id BIGSERIAL PRIMARY KEY,
+			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			token_hash TEXT NOT NULL UNIQUE,
+			expires_at TIMESTAMPTZ NOT NULL,
+			revoked_at TIMESTAMPTZ,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+		);
+		CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
 		CREATE TABLE IF NOT EXISTS favorites (
 			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 			album_id TEXT NOT NULL,

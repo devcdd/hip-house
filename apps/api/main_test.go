@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 )
 
 // The album_artists subquery returns json shaped like this; pgx's json codec
@@ -180,4 +181,35 @@ func eq(a, b []any) bool {
 		}
 	}
 	return true
+}
+
+func TestRefreshTokenMinting(t *testing.T) {
+	tok, hash, err := newRefreshToken()
+	if err != nil {
+		t.Fatalf("newRefreshToken: %v", err)
+	}
+	// The stored value must not be the token itself — a DB dump can't be replayed.
+	if hash == tok {
+		t.Fatal("stored hash equals the raw token")
+	}
+	if hashToken(tok) != hash {
+		t.Fatal("hashToken disagrees with the hash issued alongside the token")
+	}
+	if len(tok) < 32 {
+		t.Fatalf("token too short to be unguessable: %d chars", len(tok))
+	}
+	other, _, err := newRefreshToken()
+	if err != nil {
+		t.Fatalf("newRefreshToken: %v", err)
+	}
+	if other == tok {
+		t.Fatal("two mints produced the same token")
+	}
+	// A short-lived access token is the whole point of adding refresh tokens.
+	if accessTokenTTL > time.Hour {
+		t.Fatalf("accessTokenTTL = %v, want <= 1h", accessTokenTTL)
+	}
+	if refreshTokenTTL <= accessTokenTTL {
+		t.Fatal("refresh token must outlive the access token")
+	}
 }

@@ -31,7 +31,7 @@ func (s *server) issueToken(u User) (string, error) {
 	claims := jwt.MapClaims{
 		"sub":  u.ID,
 		"role": u.Role,
-		"exp":  time.Now().Add(7 * 24 * time.Hour).Unix(),
+		"exp":  time.Now().Add(accessTokenTTL).Unix(),
 	}
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(s.jwtSecret)
 }
@@ -216,12 +216,12 @@ func (s *server) loginKakao(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, err.Error())
 		return
 	}
-	token, err := s.issueToken(u)
+	token, refresh, err := s.issueSession(r.Context(), u)
 	if err != nil {
 		writeErr(w, 500, err.Error())
 		return
 	}
-	writeJSON(w, 200, map[string]any{"token": token, "user": u})
+	writeJSON(w, 200, map[string]any{"token": token, "refresh_token": refresh, "user": u})
 }
 
 func (s *server) me(w http.ResponseWriter, r *http.Request) {

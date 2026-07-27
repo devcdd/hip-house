@@ -10,6 +10,18 @@ export function updateNickname(nickname: string): Promise<User> {
   return apiPut<User>('/me', { nickname })
 }
 
-export function loginWithKakao(code: string, redirectUri: string): Promise<{ token: string; user: User }> {
+export interface Session {
+  token: string
+  refresh_token: string
+  user: User
+}
+
+export function loginWithKakao(code: string, redirectUri: string): Promise<Session> {
   return apiPost('/auth/kakao', { code, redirect_uri: redirectUri })
+}
+
+// Revokes the refresh token server-side. Never rejects — signing out locally
+// must not depend on the network.
+export function logout(refreshToken: string | null): Promise<void> {
+  return apiPost<void>('/auth/logout', { refresh_token: refreshToken }).catch(() => undefined)
 }
