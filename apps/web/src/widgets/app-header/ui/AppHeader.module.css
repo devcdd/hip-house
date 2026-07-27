@@ -27,6 +27,11 @@
   }
 }
 
+/* Stands in for the flex:1 search bar so controls stay right-aligned when hidden. */
+.spacer {
+  flex: 1;
+}
+
 .brand {
   display: flex;
   align-items: center;
