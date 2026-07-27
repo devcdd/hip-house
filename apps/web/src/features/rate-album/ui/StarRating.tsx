@@ -14,6 +14,9 @@ const STARS = [0, 1, 2, 3, 4]
 // hover, and previewing made the row's width jump as the label changed.
 export function StarRating({ score, onChange, disabled, size = 24 }: Props) {
   const readOnly = !onChange
+  // strokeWidth is in the icon's 24-unit viewBox, so a fixed value gets thicker
+  // on screen as the star grows. Scale it to hold ~1.2px at every size.
+  const stroke = 28 / size
 
   return (
     <div className={styles.row} role={readOnly ? 'img' : 'group'} aria-label={readOnly ? `별점 ${score / 2}점` : '별점'}>
@@ -23,9 +26,9 @@ export function StarRating({ score, onChange, disabled, size = 24 }: Props) {
         const halves = Math.max(0, Math.min(2, score - i * 2))
         return (
           <span key={i} className={styles.star} style={{ width: size, height: size }}>
-            <Star size={size} strokeWidth={1.6} className={styles.base} />
-            {halves === 1 && <StarHalf size={size} strokeWidth={1.6} fill="currentColor" className={styles.fill} />}
-            {halves === 2 && <Star size={size} strokeWidth={1.6} fill="currentColor" className={styles.fill} />}
+            <Star size={size} strokeWidth={stroke} className={styles.base} />
+            {halves === 1 && <StarHalf size={size} strokeWidth={stroke} fill="currentColor" className={styles.fill} />}
+            {halves === 2 && <Star size={size} strokeWidth={stroke} fill="currentColor" className={styles.fill} />}
             {onChange &&
               [1, 2].map((half) => {
                 const value = i * 2 + half
