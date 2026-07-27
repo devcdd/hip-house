@@ -1,10 +1,15 @@
 import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchRatings, setRating, removeRating } from '@/features/rate-album/api/ratingApi'
+import { fetchRatings, fetchRatedAlbums, setRating, removeRating } from '@/features/rate-album/api/ratingApi'
 import { useToast } from '@/shared/ui/toast'
 
 export function useRatings(enabled: boolean) {
   return useQuery({ queryKey: ['ratings'], queryFn: fetchRatings, enabled, staleTime: 60_000 })
+}
+
+// Full rated-album rows (for the my-page grid).
+export function useRatedAlbums(enabled: boolean) {
+  return useQuery({ queryKey: ['rated-albums'], queryFn: fetchRatedAlbums, enabled, staleTime: 60_000 })
 }
 
 // album id → score in half-stars (empty when logged out).
@@ -22,6 +27,7 @@ export function useSetRating() {
       score === 0 ? removeRating(id) : setRating(id, score),
     onSuccess: (_data, { score }) => {
       qc.invalidateQueries({ queryKey: ['ratings'] })
+      qc.invalidateQueries({ queryKey: ['rated-albums'] }) // my-page grid
       // The album's rating_avg / rating_count are served with the album itself,
       // so refetch those too or the displayed average goes stale.
       qc.invalidateQueries({ queryKey: ['album'] })

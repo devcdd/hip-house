@@ -8,9 +8,9 @@ export function AppHeader() {
   const { pathname } = useLocation()
   // Search belongs only on list-backed pages (album feed, search, artist's
   // albums, favorites). Hide on single-item detail (/albums/:id), admin (its
-  // own search), and the auth callback. Spacer keeps the controls right-aligned
-  // where the flex:1 search bar used to sit.
-  const showSearch = !/^\/(albums\/[^/]+$|admin|auth\/)/.test(pathname)
+  // own search), the auth callback, and the my-page. Spacer keeps the controls
+  // right-aligned where the flex:1 search bar used to sit.
+  const showSearch = !/^\/(albums\/[^/]+$|admin|auth\/|me(\/|$))/.test(pathname)
 
   return (
     <header className={styles.header}>

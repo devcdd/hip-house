@@ -32,12 +32,17 @@
 }
 
 .name {
-  font-size: 0.82rem;
-  font-weight: 600;
-  max-width: 90px;
+  max-width: 110px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.name:hover {
+  text-decoration: underline;
 }
 
 .logout {

@@ -1,6 +1,7 @@
 import { useParams } from 'react-router-dom'
 import { useArtist } from '@/entities/artist'
 import { AlbumFeed } from '@/widgets/album-feed'
+import { FollowButton } from '@/features/follow-artist'
 import { Avatar } from '@/shared/ui/Avatar'
 import styles from './ArtistDetailPage.module.css'
 
@@ -13,7 +14,10 @@ export function ArtistDetailPage() {
     <div className={styles.page}>
       <header className={styles.header}>
         <Avatar src={artist?.image_url} name={name} size={88} />
-        <h1 className={styles.name}>{isLoading ? '불러오는 중…' : name}</h1>
+        <div className={styles.headerInfo}>
+          <h1 className={styles.name}>{isLoading ? '불러오는 중…' : name}</h1>
+          {artist && <FollowButton artistId={artist.id} />}
+        </div>
       </header>
 
       {error && <p className={styles.state}>불러오기 실패: {String(error)}</p>}

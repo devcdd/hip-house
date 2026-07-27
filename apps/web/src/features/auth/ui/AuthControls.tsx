@@ -25,9 +25,9 @@ export function AuthControls() {
       <Link to="/favorites" className={styles.link} title="즐겨찾기" aria-label="즐겨찾기">
         <Heart size={17} />
       </Link>
-      <span className={styles.name} title={user?.nickname}>
+      <Link to="/me" className={styles.name} title="마이페이지">
         {user?.nickname || '사용자'}
-      </span>
+      </Link>
       <button type="button" className={styles.logout} onClick={signOut}>
         로그아웃
       </button>

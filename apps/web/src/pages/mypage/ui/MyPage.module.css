@@ -1,0 +1,149 @@
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 24px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  width: fit-content;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.back:hover {
+  color: var(--fg);
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+/* --- menu (/me) --- */
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--fg);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.menuItem:hover {
+  background: color-mix(in srgb, var(--surface) 88%, var(--fg));
+}
+
+.menuIcon {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.menuLabel {
+  flex: 1;
+}
+
+.chev {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+/* --- nickname editor (/me/nickname) --- */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.nickRow {
+  display: flex;
+  gap: 8px;
+}
+
+.input {
+  flex: 1;
+  max-width: 280px;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.input:focus {
+  outline: 2px solid var(--muted);
+  outline-offset: -1px;
+}
+
+.save {
+  flex: 0 0 auto;
+  padding: 9px 18px;
+  border: none;
+  border-radius: 8px;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.save:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* --- album grid (/me/rated) --- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 28px 20px;
+}
+
+.item {
+  position: relative;
+}
+
+.state {
+  color: var(--muted);
+  padding: 8px 0;
+}
+
+.login {
+  width: fit-content;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 999px;
+  background: #fee500;
+  color: #191600;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}

@@ -1,3 +1,3 @@
 export type { User } from './model/types'
 export { useAuth } from './model/useAuth'
-export { loginWithKakao } from './api/authApi'
+export { loginWithKakao, updateNickname } from './api/authApi'
