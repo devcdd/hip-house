@@ -4,6 +4,10 @@ import { Search, X } from 'lucide-react'
 import { useDebouncedValue } from '@/shared/lib/useDebouncedValue'
 import styles from './SearchBar.module.css'
 
+// Last query string seen on the album list (year/type/sort filters). Module
+// scope so it survives SearchBar unmounting on pages that hide the search box.
+let lastListSearch = ''
+
 export function SearchBar() {
   const [params] = useSearchParams()
   const [q, setQ] = useState(params.get('q') ?? '')
@@ -20,6 +24,11 @@ export function SearchBar() {
     if (!onSearchPage && !urlQ) setQ('')
   }, [onSearchPage, urlQ])
 
+  // Remember the list's filters so clearing the search can put them back.
+  useEffect(() => {
+    if (location.pathname === '/') lastListSearch = location.search
+  }, [location.pathname, location.search])
+
   // Live search: typing lands on /search (one history entry), then further
   // keystrokes replace in place so Back still returns to where you were.
   useEffect(() => {
@@ -30,7 +39,8 @@ export function SearchBar() {
       p.set('q', term)
       navigate(`/search?${p.toString()}`, { replace: onSearchPage })
     } else if (onSearchPage) {
-      navigate('/', { replace: true }) // cleared → back to the default album list
+      // cleared → back to the album list with the filters that were active
+      navigate(`/${lastListSearch}`, { replace: true })
     }
   }, [debounced]) // params/location are read fresh on each debounce tick
 
