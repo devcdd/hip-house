@@ -5,7 +5,8 @@ import styles from './ArtistCard.module.css'
 export function ArtistCardSkeleton() {
   return (
     <div className={styles.card}>
-      <Skeleton className={styles.avatar} radius="50%" />
+      {/* Avatar sizing now lives in shared/ui/Avatar, so state it here explicitly. */}
+      <Skeleton width="100%" radius="50%" style={{ aspectRatio: '1 / 1' }} />
       <Skeleton height={13} width="70%" radius={4} />
     </div>
   )

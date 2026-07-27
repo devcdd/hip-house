@@ -1,0 +1,24 @@
+.avatar {
+  flex: 0 0 auto;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  /* The clip is what guarantees a circle even if the source isn't square. */
+  overflow: hidden;
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  /* Fallback initial scales with the avatar instead of needing a size prop. */
+  container-type: inline-size;
+  font-size: 42cqw;
+  line-height: 1;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}

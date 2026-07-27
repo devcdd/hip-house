@@ -1,6 +1,7 @@
 import { useParams } from 'react-router-dom'
 import { useArtist } from '@/entities/artist'
 import { AlbumFeed } from '@/widgets/album-feed'
+import { Avatar } from '@/shared/ui/Avatar'
 import styles from './ArtistDetailPage.module.css'
 
 export function ArtistDetailPage() {
@@ -11,9 +12,7 @@ export function ArtistDetailPage() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <div className={styles.avatar}>
-          {artist?.image_url ? <img src={artist.image_url} alt={name} /> : name.slice(0, 1)}
-        </div>
+        <Avatar src={artist?.image_url} name={name} size={88} />
         <h1 className={styles.name}>{isLoading ? '불러오는 중…' : name}</h1>
       </header>
 

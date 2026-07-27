@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Download, Search, X } from 'lucide-react'
+import { Avatar } from '@/shared/ui/Avatar'
 import { useDebouncedValue } from '@/shared/lib/useDebouncedValue'
 import { crawlArtist, fetchSpotifyKeys, searchSpotifyArtists } from '../api/spotifyAdminApi'
 import styles from './AdminPage.module.css'
@@ -87,9 +88,7 @@ export function CrawlTab() {
       <div className={styles.rows}>
         {(search.data ?? []).map((hit) => (
           <div key={hit.id} className={styles.row}>
-            <div className={styles.rowAvatar}>
-              {hit.image_url ? <img src={hit.image_url} alt={hit.name} loading="lazy" /> : hit.name.slice(0, 1)}
-            </div>
+            <Avatar src={hit.image_url} name={hit.name} size={40} />
             <div className={styles.rowInfo}>
               <span className={styles.rowName} title={hit.name}>
                 {hit.name}

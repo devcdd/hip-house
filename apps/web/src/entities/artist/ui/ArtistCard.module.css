@@ -6,17 +6,8 @@
   text-align: center;
 }
 
+/* Shape comes from shared/ui/Avatar — only the hover motion is card-specific. */
 .avatar {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  border-radius: 50%;
-  background: var(--surface);
-  display: grid;
-  place-items: center;
-  font-size: 2.2rem;
-  font-weight: 700;
-  color: var(--muted);
-  text-transform: uppercase;
   transition: transform 0.2s ease;
 }
 
@@ -31,11 +22,4 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.avatar img {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
 }

@@ -8,6 +8,7 @@ import {
   useArtistSearch,
   type Artist,
 } from '@/entities/artist'
+import { Avatar } from '@/shared/ui/Avatar'
 import { useDebouncedValue } from '@/shared/lib/useDebouncedValue'
 import { useInfiniteScroll } from '@/shared/lib/useInfiniteScroll'
 import styles from './AdminPage.module.css'
@@ -188,9 +189,7 @@ function AliasRow({
         onChange={onToggle}
         aria-label={`${name} 선택`}
       />
-      <div className={styles.rowAvatar}>
-        {artist.image_url ? <img src={artist.image_url} alt={name} loading="lazy" /> : name.slice(0, 1)}
-      </div>
+      <Avatar src={artist.image_url} name={name} size={40} />
       <div className={styles.rowInfo}>
         <span className={styles.rowName} title={name}>
           {name}

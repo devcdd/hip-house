@@ -7,24 +7,13 @@
   gap: 28px;
 }
 
+/* Divider separates the artist header from their album list below. */
 .header {
   display: flex;
   align-items: center;
   gap: 20px;
-}
-
-.avatar {
-  flex: 0 0 auto;
-  width: 88px;
-  height: 88px;
-  border-radius: 50%;
-  background: var(--surface);
-  display: grid;
-  place-items: center;
-  font-size: 2.4rem;
-  font-weight: 700;
-  color: var(--muted);
-  text-transform: uppercase;
+  padding-bottom: 24px;
+  border-bottom: 1px solid color-mix(in srgb, var(--fg) 12%, transparent);
 }
 
 .name {
@@ -37,11 +26,4 @@
 .state {
   color: var(--muted);
   padding: 8px 0;
-}
-
-.avatar img {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
 }
