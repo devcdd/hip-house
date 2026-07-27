@@ -36,12 +36,13 @@ export function AlbumCard({ album }: { album: Album }) {
           {(album.release_date ?? album.year) != null && (
             <span className={styles.year}>{album.release_date ?? album.year}</span>
           )}
-          {/* Makes 인기순 / 별점 높은 순 legible — hidden until someone rates it. */}
+          {/* Makes 인기순 / 별점 높은 순 legible — hidden until someone rates it.
+              The count in parens is COMMENTS, not raters — rating_count stays off-card. */}
           {album.rating_count > 0 && album.rating_avg != null && (
-            <span className={styles.rating} title={`평균 별점 ${album.rating_avg.toFixed(1)} · ${album.rating_count}명`}>
+            <span className={styles.rating} title={`평균 별점 ${album.rating_avg.toFixed(1)} · 댓글 ${album.comment_count}개`}>
               <Star size={12} strokeWidth={2.2} fill="currentColor" />
               {album.rating_avg.toFixed(1)}
-              <span className={styles.count}>({album.rating_count})</span>
+              {album.comment_count > 0 && <span className={styles.count}>({album.comment_count})</span>}
             </span>
           )}
         </div>

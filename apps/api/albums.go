@@ -46,10 +46,12 @@ type Album struct {
 	TypeLabel *string `json:"type_label" db:"type_label"`
 	// Rating aggregates over the ratings table. RatingAvg is in stars (0..5),
 	// null when nobody has rated the album yet; RatingCount is then 0.
-	RatingAvg   *float64      `json:"rating_avg" db:"rating_avg"`
-	RatingCount int           `json:"rating_count" db:"rating_count"`
-	DeletedAt   *string       `json:"deleted_at" db:"deleted_at"`
-	Artists     []AlbumArtist `json:"artists" db:"artists"` // aggregated from album_artists, ordered by position
+	RatingAvg   *float64 `json:"rating_avg" db:"rating_avg"`
+	RatingCount int      `json:"rating_count" db:"rating_count"`
+	// Live (non-deleted) comment count — the number shown on album cards.
+	CommentCount int           `json:"comment_count" db:"comment_count"`
+	DeletedAt    *string       `json:"deleted_at" db:"deleted_at"`
+	Artists      []AlbumArtist `json:"artists" db:"artists"` // aggregated from album_artists, ordered by position
 }
 
 // albumCols: writable scalar columns on the albums table (INSERT/UPDATE).
@@ -63,6 +65,7 @@ const albumSelectCols = albumCols + `,
 	     ELSE album_type END AS type_label,
 	(SELECT AVG(score)::float / 2 FROM ratings rt WHERE rt.album_id = albums.id) AS rating_avg,
 	(SELECT COUNT(*) FROM ratings rt WHERE rt.album_id = albums.id)::int AS rating_count,
+	(SELECT COUNT(*) FROM comments c WHERE c.album_id = albums.id AND c.deleted_at IS NULL)::int AS comment_count,
 	deleted_at::text AS deleted_at,
 	COALESCE((
 		SELECT json_agg(json_build_object('id', ar.id, 'name', ar.name, 'image_url', ar.image_url, 'genres', ar.genres, 'spotify_url', ar.spotify_url) ORDER BY aa.position)
@@ -98,12 +101,13 @@ func orderClause(sort string) string {
 // browsing — deleted rows mixed in, dimmed client-side), "only" (admin 삭제 목록).
 func buildAlbumListQuery(year *int, artistID, q string, types []string, sort string, deleted string, limit, offset int) (string, []any) {
 	sql := "SELECT " + albumSelectCols + " FROM albums WHERE 1=1"
+	// Qualified with albums. — the comment_count subquery has its own deleted_at.
 	switch deleted {
 	case "include": // no filter
 	case "only":
-		sql += " AND deleted_at IS NOT NULL"
+		sql += " AND albums.deleted_at IS NOT NULL"
 	default: // "hide"
-		sql += " AND deleted_at IS NULL"
+		sql += " AND albums.deleted_at IS NULL"
 	}
 	var args []any
 	if year != nil {

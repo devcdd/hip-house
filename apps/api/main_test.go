@@ -51,7 +51,7 @@ func TestBuildAlbumListQuery(t *testing.T) {
 		}
 	}
 	// public view hides soft-deleted rows.
-	if !strings.Contains(sql, "deleted_at IS NULL") {
+	if !strings.Contains(sql, "albums.deleted_at IS NULL") {
 		t.Errorf("expected deleted_at filter: %s", sql)
 	}
 
@@ -67,13 +67,14 @@ func TestBuildAlbumListQuery(t *testing.T) {
 		t.Errorf("default sort should be by release_date: %s", sql)
 	}
 	// admin browsing ("include") must NOT filter deleted_at either way.
-	if strings.Contains(sql, "deleted_at IS NULL") || strings.Contains(sql, "deleted_at IS NOT NULL") {
+	// (albums.-qualified: the comment_count subquery filters its own deleted_at.)
+	if strings.Contains(sql, "albums.deleted_at IS NULL") || strings.Contains(sql, "albums.deleted_at IS NOT NULL") {
 		t.Errorf("include mode should not filter deleted_at: %s", sql)
 	}
 
 	// admin 삭제 목록 ("only") returns exclusively soft-deleted rows.
 	sql, _ = buildAlbumListQuery(nil, "", "", nil, "", "only", 50, 0)
-	if !strings.Contains(sql, "deleted_at IS NOT NULL") {
+	if !strings.Contains(sql, "albums.deleted_at IS NOT NULL") {
 		t.Errorf("only mode should filter to deleted rows: %s", sql)
 	}
 }
