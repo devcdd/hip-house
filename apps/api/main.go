@@ -78,10 +78,13 @@ func main() {
 	mux.HandleFunc("PUT /ratings/{albumId}", s.requireAuth(s.putRating))
 	mux.HandleFunc("DELETE /ratings/{albumId}", s.requireAuth(s.deleteRating))
 
-	// "힙합이 아니에요" 신고 — 사용자당 앨범 1건 (auth required)
-	mux.HandleFunc("GET /not-hiphop", s.requireAuth(s.listMyReports))
-	mux.HandleFunc("POST /albums/{id}/not-hiphop", s.requireAuth(s.addReport))
-	mux.HandleFunc("DELETE /albums/{id}/not-hiphop", s.requireAuth(s.removeReport))
+	// "힙합이 아니에요" 신고 / "앨범명 좀 바꿔주세요" 요청 — 둘 다 사용자당 앨범 1건 (auth required)
+	mux.HandleFunc("GET /not-hiphop", s.requireAuth(s.listFlags(tblNotHiphop)))
+	mux.HandleFunc("POST /albums/{id}/not-hiphop", s.requireAuth(s.addFlag(tblNotHiphop)))
+	mux.HandleFunc("DELETE /albums/{id}/not-hiphop", s.requireAuth(s.removeFlag(tblNotHiphop)))
+	mux.HandleFunc("GET /rename-requests", s.requireAuth(s.listFlags(tblRename)))
+	mux.HandleFunc("POST /albums/{id}/rename-request", s.requireAuth(s.addFlag(tblRename)))
+	mux.HandleFunc("DELETE /albums/{id}/rename-request", s.requireAuth(s.removeFlag(tblRename)))
 
 	// Comments — reads public, writing/deleting requires auth
 	mux.HandleFunc("GET /albums/{id}/comments", s.listComments)
@@ -96,6 +99,7 @@ func main() {
 	mux.HandleFunc("GET /albums/{id}", s.getAlbum)
 	mux.HandleFunc("GET /albums/{id}/tracks", s.listAlbumTracks)
 	mux.HandleFunc("PUT /albums/{id}", s.requireAdmin(s.updateAlbum))
+	mux.HandleFunc("PUT /albums/{id}/display-name", s.requireAdmin(s.updateAlbumDisplayName))
 	mux.HandleFunc("DELETE /albums/{id}", s.requireAdmin(s.deleteAlbum))
 	mux.HandleFunc("POST /albums/{id}/restore", s.requireAdmin(s.restoreAlbum))
 
@@ -105,12 +109,15 @@ func main() {
 	mux.HandleFunc("GET /artists/{id}", s.getArtist)
 	mux.HandleFunc("PUT /artists/{id}", s.requireAdmin(s.updateArtist))
 	mux.HandleFunc("PUT /artists/{id}/aliases", s.requireAdmin(s.updateArtistAliases))
+	mux.HandleFunc("PUT /artists/{id}/display-name", s.requireAdmin(s.updateArtistDisplayName))
 	mux.HandleFunc("POST /artists/merge", s.requireAdmin(s.mergeArtists))
 	mux.HandleFunc("DELETE /artists/{id}", s.requireAdmin(s.deleteArtist))
 
 	mux.HandleFunc("GET /admin/stats", s.requireAdmin(s.adminStats))
-	mux.HandleFunc("GET /admin/not-hiphop", s.requireAdmin(s.adminListReports))
-	mux.HandleFunc("DELETE /admin/not-hiphop/{id}", s.requireAdmin(s.adminClearReports))
+	mux.HandleFunc("GET /admin/not-hiphop", s.requireAdmin(s.adminListFlagged(tblNotHiphop)))
+	mux.HandleFunc("DELETE /admin/not-hiphop/{id}", s.requireAdmin(s.adminClearFlags(tblNotHiphop)))
+	mux.HandleFunc("GET /admin/rename-requests", s.requireAdmin(s.adminListFlagged(tblRename)))
+	mux.HandleFunc("DELETE /admin/rename-requests/{id}", s.requireAdmin(s.adminClearFlags(tblRename)))
 
 	// Admin crawling — Spotify search + pull a picked artist's albums into the DB
 	mux.HandleFunc("GET /admin/spotify/keys", s.requireAdmin(s.adminSpotifyKeys))
@@ -181,6 +188,15 @@ func (s *server) ensureAuthSchema(ctx context.Context) error {
 			PRIMARY KEY (user_id, album_id)
 		);
 		CREATE INDEX IF NOT EXISTS idx_not_hiphop_album ON not_hiphop_reports(album_id);
+		-- "앨범명 좀 바꿔주세요" — 같은 모양의 플래그 테이블. 한글 표시 이름이 필요한
+		-- 앨범을 사용자가 눌러 쌓아두면 관리자가 모아 보고 display_name을 채운다.
+		CREATE TABLE IF NOT EXISTS rename_requests (
+			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			album_id TEXT NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+			PRIMARY KEY (user_id, album_id)
+		);
+		CREATE INDEX IF NOT EXISTS idx_rename_requests_album ON rename_requests(album_id);
 		-- parent_id NULL = top-level; replies are capped at one level in the handler.
 		CREATE TABLE IF NOT EXISTS comments (
 			id BIGSERIAL PRIMARY KEY,
@@ -229,6 +245,10 @@ func (s *server) ensureAuthSchema(ctx context.Context) error {
 		ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS spotify_url TEXT;
 		ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS aliases TEXT[];
 		ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS followers INTEGER;
+		-- 한글 표시 이름: admin-curated, never written by the crawler (Spotify only
+		-- returns the label-registered, usually English, name).
+		ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS display_name TEXT;
+		ALTER TABLE IF EXISTS albums ADD COLUMN IF NOT EXISTS display_name TEXT;
 
 		-- Backfill the legacy single-artist column into the join table. We DON'T drop
 		-- the old artist_id/artist_name columns: artist_name still holds the only record

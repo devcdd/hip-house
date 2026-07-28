@@ -18,7 +18,7 @@
         "parameters": [
           { "name": "year", "in": "query", "schema": { "type": "integer" }, "description": "발매 연도로 필터" },
           { "name": "artist_id", "in": "query", "schema": { "type": "string" }, "description": "아티스트 ID로 필터" },
-          { "name": "q", "in": "query", "schema": { "type": "string" }, "description": "검색어 — 앨범명, 크레딧 아티스트명, 아티스트 연관검색어(aliases), 트랙명에 매칭" },
+          { "name": "q", "in": "query", "schema": { "type": "string" }, "description": "검색어 — 앨범명(한글 표시 이름 포함), 크레딧 아티스트명(한글 표시 이름 포함), 아티스트 연관검색어(aliases), 트랙명에 매칭" },
           { "name": "deleted", "in": "query", "schema": { "type": "string", "enum": ["only"] }, "description": "only = 소프트삭제된 앨범만 (관리자 전용; 비관리자에겐 무시됨)" },
           { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "minimum": 1, "maximum": 200 } },
           { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
@@ -87,12 +87,38 @@
         }
       }
     },
+    "/albums/{id}/display-name": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+      "put": {
+        "tags": ["albums"],
+        "summary": "앨범 한글 표시 이름만 교체 (관리자 전용)",
+        "description": "크롤러가 관리하는 필드는 건드리지 않는다. 빈 문자열/null이면 해제되어 Spotify 원본명으로 표시된다.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "display_name": { "type": "string", "nullable": true, "example": "새삥" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "수정됨" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
     "/artists": {
       "get": {
         "tags": ["artists"],
         "summary": "아티스트 목록",
         "parameters": [
-          { "name": "q", "in": "query", "schema": { "type": "string" }, "description": "검색어 — 아티스트명 또는 연관검색어(aliases)에 매칭" },
+          { "name": "q", "in": "query", "schema": { "type": "string" }, "description": "검색어 — 아티스트명, 한글 표시 이름, 또는 연관검색어(aliases)에 매칭" },
           { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "minimum": 1, "maximum": 200 } },
           { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
         ],
@@ -281,6 +307,32 @@
           "404": { "$ref": "#/components/responses/NotFound" }
         }
       }
+    },
+    "/artists/{id}/display-name": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+      "put": {
+        "tags": ["artists"],
+        "summary": "아티스트 한글 표시 이름만 교체 (관리자 전용)",
+        "description": "크롤러가 관리하는 필드(name/image/genres/spotify_url)는 건드리지 않는다. 빈 문자열/null이면 해제되어 Spotify 원본명으로 표시된다.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "display_name": { "type": "string", "nullable": true, "example": "지코" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "수정됨" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
     }
   },
   "components": {
@@ -295,6 +347,7 @@
         "properties": {
           "id": { "type": "string", "example": "4aawyAB9vmqN3uQ7FjRGTy" },
           "name": { "type": "string", "example": "Album Name" },
+          "display_name": { "type": "string", "nullable": true, "example": "새삥", "description": "관리자가 등록한 한글 표시 이름. 없으면 name으로 표시하고, 검색 시 name과 함께 매칭됨" },
           "artists": {
             "type": "array",
             "description": "크레딧된 모든 아티스트 (Spotify 순서). album_artists 조인에서 집계.",
@@ -314,6 +367,7 @@
         "properties": {
           "id": { "type": "string", "example": "1uNFoZAHBGtllmzznpCI3s" },
           "name": { "type": "string", "nullable": true, "example": "Artist Name" },
+          "display_name": { "type": "string", "nullable": true, "example": "지코", "description": "관리자가 등록한 한글 표시 이름. 없으면 name으로 표시하고, 검색 시 name과 함께 매칭됨" },
           "image_url": { "type": "string", "nullable": true, "description": "Spotify 아티스트 사진 (없을 수 있음)" },
           "genres": { "type": "array", "items": { "type": "string" }, "nullable": true, "description": "Spotify 아티스트 장르 (비어있을 수 있음)" },
           "spotify_url": { "type": "string", "nullable": true, "description": "Spotify 아티스트 프로필 URL" },

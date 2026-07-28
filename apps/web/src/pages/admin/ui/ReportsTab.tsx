@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Flag, RotateCcw, Trash2 } from 'lucide-react'
 import { AlbumCard } from '@/entities/album'
-import { clearReports, fetchReportedAlbums } from '@/features/report-album'
+import { clearFlags, fetchFlaggedAlbums } from '@/features/report-album'
 import { apiDelete, apiPost } from '@/shared/api/client'
 import { useToast } from '@/shared/ui/toast'
 import styles from './AdminPage.module.css'
@@ -11,10 +11,14 @@ import styles from './AdminPage.module.css'
 export function ReportsTab() {
   const qc = useQueryClient()
   const toast = useToast()
-  const { data: albums, isLoading, error } = useQuery({ queryKey: ['admin-reports'], queryFn: fetchReportedAlbums })
+  const {
+    data: albums,
+    isLoading,
+    error,
+  } = useQuery({ queryKey: ['admin-flags', 'not-hiphop'], queryFn: () => fetchFlaggedAlbums('not-hiphop') })
 
   const refresh = () => {
-    qc.invalidateQueries({ queryKey: ['admin-reports'] })
+    qc.invalidateQueries({ queryKey: ['admin-flags', 'not-hiphop'] })
     qc.invalidateQueries({ queryKey: ['albums'] })
   }
 
@@ -29,7 +33,7 @@ export function ReportsTab() {
   })
 
   const dismiss = useMutation({
-    mutationFn: (id: string) => clearReports(id),
+    mutationFn: (id: string) => clearFlags('not-hiphop', id),
     onSuccess: () => {
       refresh()
       toast('신고를 정리했습니다')

@@ -137,6 +137,9 @@
 .report {
   margin-top: 4px;
   margin-left: -12px; /* pull the borderless button back into the text column */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
 }
 
 .loginHint {

@@ -449,6 +449,24 @@
   font-size: 0.8rem;
 }
 
+/* 한글 표시 이름 — 연관검색어보다 짧게 (이름 하나만 들어감). */
+.displayInput {
+  flex: 0 1 200px;
+}
+
+/* 이름 변경 요청 탭: 앨범 카드 아래에서 바로 한글명을 입력/저장. */
+.renameForm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.renameInput {
+  flex: 1 1 140px;
+}
+
 @media (max-width: 640px) {
   .row {
     flex-wrap: wrap;
@@ -462,6 +480,10 @@
   .aliasInput {
     flex-basis: 100%;
     order: 3;
+  }
+
+  .displayInput {
+    order: 2;
   }
 
   .save {

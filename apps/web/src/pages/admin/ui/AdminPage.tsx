@@ -6,15 +6,17 @@ import { CrawlTab } from './CrawlTab'
 import { TracksTab } from './TracksTab'
 import { StatsTab } from './StatsTab'
 import { ReportsTab } from './ReportsTab'
+import { RenameRequestsTab } from './RenameRequestsTab'
 import styles from './AdminPage.module.css'
 
-type Tab = 'deleted' | 'aliases' | 'crawl' | 'tracks' | 'stats' | 'reports'
+type Tab = 'deleted' | 'aliases' | 'crawl' | 'tracks' | 'stats' | 'reports' | 'rename'
 const TABS: { key: Tab; label: string }[] = [
   { key: 'crawl', label: '크롤링' },
   { key: 'tracks', label: '트랙 동기화' },
   { key: 'aliases', label: '연관검색어' },
   { key: 'deleted', label: '삭제된 앨범' },
   { key: 'reports', label: '힙합 아님 신고' },
+  { key: 'rename', label: '이름 변경 요청' },
   { key: 'stats', label: '통계' },
 ]
 
@@ -23,7 +25,14 @@ export function AdminPage() {
   const [params, setParams] = useSearchParams()
   const raw = params.get('tab')
   const tab: Tab =
-    raw === 'aliases' || raw === 'deleted' || raw === 'stats' || raw === 'reports' || raw === 'tracks' ? raw : 'crawl'
+    raw === 'aliases' ||
+    raw === 'deleted' ||
+    raw === 'stats' ||
+    raw === 'reports' ||
+    raw === 'tracks' ||
+    raw === 'rename'
+      ? raw
+      : 'crawl'
 
   if (isLoading) return <p className={styles.state}>확인 중…</p>
   if (!isAdmin) return <p className={styles.state}>관리자 전용 페이지입니다.</p>
@@ -56,6 +65,8 @@ export function AdminPage() {
         <StatsTab />
       ) : tab === 'reports' ? (
         <ReportsTab />
+      ) : tab === 'rename' ? (
+        <RenameRequestsTab />
       ) : (
         <AliasManagerTab />
       )}

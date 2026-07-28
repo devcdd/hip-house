@@ -2,6 +2,7 @@
 export interface Artist {
   id: string
   name: string | null
+  display_name: string | null // 관리자가 등록한 한글명 (없으면 name으로 표시)
   image_url: string | null
   genres: string[] | null
   spotify_url: string | null

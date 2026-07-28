@@ -219,6 +219,10 @@ export async function openDb() {
     ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS spotify_url TEXT;
     ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS aliases TEXT[];
     ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS followers INTEGER;
+    -- display_name (한글 표시 이름) is admin-curated via the API, like aliases: the
+    -- upserts below never list it, so re-crawls preserve it.
+    ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS display_name TEXT;
+    ALTER TABLE IF EXISTS albums ADD COLUMN IF NOT EXISTS display_name TEXT;
     CREATE TABLE IF NOT EXISTS albums (
       id TEXT PRIMARY KEY, name TEXT NOT NULL,
       release_date TEXT, year INTEGER, album_type TEXT,

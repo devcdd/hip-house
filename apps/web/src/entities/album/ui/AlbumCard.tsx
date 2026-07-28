@@ -2,32 +2,34 @@ import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { Star } from 'lucide-react'
 import type { Album } from '@/entities/album/model/types'
+import { displayName } from '@/shared/lib/displayName'
 import styles from './AlbumCard.module.css'
 
 export function AlbumCard({ album }: { album: Album }) {
   const albumHref = `/albums/${encodeURIComponent(album.id)}`
+  const title = displayName(album)
   // Each credited artist carries its own Spotify id, so every name links to that artist.
-  const artistNames = album.artists.map((a) => a.name ?? a.id).join(', ')
+  const artistNames = album.artists.map(displayName).join(', ')
 
   return (
     <article className={styles.card}>
-      <Link to={albumHref} className={styles.art} aria-label={album.name}>
+      <Link to={albumHref} className={styles.art} aria-label={title}>
         {album.image_url ? (
-          <img src={album.image_url} alt={album.name} loading="lazy" />
+          <img src={album.image_url} alt={title} loading="lazy" />
         ) : (
-          <div className={styles.placeholder}>{album.name.slice(0, 1)}</div>
+          <div className={styles.placeholder}>{title.slice(0, 1)}</div>
         )}
       </Link>
       <div className={styles.meta}>
-        <Link to={albumHref} className={styles.name} title={album.name}>
-          {album.name}
+        <Link to={albumHref} className={styles.name} title={title}>
+          {title}
         </Link>
         <div className={styles.artist} title={artistNames}>
           {album.artists.map((a, i) => (
             <Fragment key={a.id}>
               {i > 0 && <span className={styles.sep}>, </span>}
               <Link to={`/artists/${encodeURIComponent(a.id)}`} className={styles.artistLink}>
-                {a.name ?? a.id}
+                {displayName(a)}
               </Link>
             </Fragment>
           ))}

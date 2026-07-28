@@ -41,9 +41,10 @@ func TestBuildAlbumListQuery(t *testing.T) {
 	}
 	for _, frag := range []string{
 		"year = $1", "aa.artist_id = $2",
-		// q must match the album name, credited artist names, aliases, and track
-		// names — one arg, reused placeholder.
-		"albums.name ILIKE $3", "ar.name ILIKE $3", "al ILIKE $3", "t.name ILIKE $3",
+		// q must match the album name, its 한글 display name, credited artist names
+		// (English + 한글), aliases, and track names — one arg, reused placeholder.
+		"albums.name ILIKE $3", "albums.display_name ILIKE $3",
+		"ar.name ILIKE $3", "ar.display_name ILIKE $3", "al ILIKE $3", "t.name ILIKE $3",
 		"(album_type='single' AND total_tracks < 3)", "(album_type='single' AND total_tracks >= 3)", " OR ",
 		"total_tracks DESC", "LIMIT $4", "OFFSET $5",
 	} {
@@ -170,6 +171,41 @@ func TestNormalizeAliases(t *testing.T) {
 	}
 	if got := normalizeAliases(nil); len(got) != 0 {
 		t.Fatalf("nil input should yield empty slice, got %v", got)
+	}
+}
+
+// A blank 한글 이름 must clear the override (NULL), not store "" — otherwise the
+// UI would render an empty title instead of falling back to the Spotify name.
+func TestNilIfBlank(t *testing.T) {
+	if nilIfBlank(nil) != nil {
+		t.Fatal("nil input should stay nil")
+	}
+	for _, blank := range []string{"", "   ", "\t\n"} {
+		if got := nilIfBlank(&blank); got != nil {
+			t.Fatalf("nilIfBlank(%q) = %q, want nil", blank, *got)
+		}
+	}
+	padded := "  지코  "
+	if got := nilIfBlank(&padded); got == nil || *got != "지코" {
+		t.Fatalf("nilIfBlank(%q) = %v, want 지코", padded, got)
+	}
+}
+
+// Both flag tables run through the same parameterized SQL; the table name must
+// land in both the count subquery and the EXISTS filter, or one flag type would
+// silently list the other's albums.
+func TestFlaggedAlbumsSQL(t *testing.T) {
+	for _, table := range []string{tblNotHiphop, tblRename} {
+		sql := flaggedAlbumsSQL(table)
+		if strings.Count(sql, "FROM "+table+" rp") != 2 {
+			t.Errorf("flaggedAlbumsSQL(%q) should reference the table twice: %s", table, sql)
+		}
+		if !strings.Contains(sql, "AS report_count") || !strings.Contains(sql, "ORDER BY report_count DESC") {
+			t.Errorf("flaggedAlbumsSQL(%q) missing count alias/order: %s", table, sql)
+		}
+	}
+	if tblNotHiphop == tblRename {
+		t.Fatal("flag tables must be distinct")
 	}
 }
 

@@ -5,12 +5,14 @@ import {
   deleteArtist,
   mergeArtists,
   updateArtistAliases,
+  updateArtistDisplayName,
   useArtistSearch,
   type Artist,
   type DeleteMode,
 } from '@/entities/artist'
 import { Avatar } from '@/shared/ui/Avatar'
 import { useToast } from '@/shared/ui/toast'
+import { displayName } from '@/shared/lib/displayName'
 import { useDebouncedValue } from '@/shared/lib/useDebouncedValue'
 import { useInfiniteScroll } from '@/shared/lib/useInfiniteScroll'
 import styles from './AdminPage.module.css'
@@ -36,7 +38,7 @@ export function AliasManagerTab() {
     setSelected((prev) => {
       const next = new Map(prev)
       if (next.has(a.id)) next.delete(a.id)
-      else next.set(a.id, a.name ?? a.id)
+      else next.set(a.id, displayName(a))
       return next
     })
   const clear = () => {
@@ -65,7 +67,7 @@ export function AliasManagerTab() {
           className={styles.searchInput}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="아티스트 검색 (이름 또는 연관검색어)"
+          placeholder="아티스트 검색 (이름, 한글명 또는 연관검색어)"
           aria-label="아티스트 검색"
         />
         {input && (
@@ -153,19 +155,28 @@ function AliasRow({
   const qc = useQueryClient()
   const toast = useToast()
   const saved = (artist.aliases ?? []).join(', ')
+  const savedName = artist.display_name ?? ''
   const [text, setText] = useState(saved)
+  const [name, setName] = useState(savedName) // 한글 표시 이름 (비우면 해제)
   const [confirming, setConfirming] = useState(false)
-  const name = artist.name ?? artist.id
+  const shown = displayName(artist)
+  const dirty = text !== saved || name.trim() !== savedName
 
+  // 한 번의 저장으로 한글명 + 연관검색어를 함께 반영 — 바뀐 것만 요청한다.
   const save = useMutation({
-    mutationFn: () =>
-      updateArtistAliases(
-        artist.id,
-        text.split(',').map((s) => s.trim()).filter(Boolean),
-      ),
+    mutationFn: async () => {
+      if (name.trim() !== savedName) await updateArtistDisplayName(artist.id, name.trim())
+      return text === saved
+        ? null
+        : updateArtistAliases(
+            artist.id,
+            text.split(',').map((s) => s.trim()).filter(Boolean),
+          )
+    },
     onSuccess: (updated) => {
-      setText((updated.aliases ?? []).join(', '))
+      if (updated) setText((updated.aliases ?? []).join(', '))
       qc.invalidateQueries({ queryKey: ['artists'] })
+      qc.invalidateQueries({ queryKey: ['albums'] }) // 앨범 카드에도 아티스트명이 찍힘
     },
   })
 
@@ -194,22 +205,30 @@ function AliasRow({
         className={styles.check}
         checked={checked}
         onChange={onToggle}
-        aria-label={`${name} 선택`}
+        aria-label={`${shown} 선택`}
       />
-      <Avatar src={artist.image_url} name={name} size={40} />
+      <Avatar src={artist.image_url} name={shown} size={40} />
       <div className={styles.rowInfo}>
-        <span className={styles.rowName} title={name}>
-          {name}
+        <span className={styles.rowName} title={shown}>
+          {shown}
         </span>
         <span className={styles.rowId}>{artist.id}</span>
       </div>
+      <input
+        className={`${styles.aliasInput} ${styles.displayInput}`}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder={`한글명 (비우면 ${artist.name ?? artist.id})`}
+        aria-label="한글 표시 이름"
+      />
       <input
         className={styles.aliasInput}
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="연관검색어 (쉼표로 구분: 블랙넛, 블넛)"
+        aria-label="연관검색어"
       />
-      <button type="submit" className={styles.save} disabled={text === saved || save.isPending}>
+      <button type="submit" className={styles.save} disabled={!dirty || save.isPending}>
         {save.isPending ? '저장 중…' : '저장'}
       </button>
       {save.isError && <span className={styles.rowError}>실패</span>}
@@ -217,7 +236,7 @@ function AliasRow({
         type="button"
         className={styles.rowDelete}
         disabled={del.isPending}
-        aria-label={`${name} 삭제`}
+        aria-label={`${shown} 삭제`}
         onClick={() => setConfirming(true)}
       >
         <Trash2 size={15} />
@@ -225,7 +244,7 @@ function AliasRow({
 
       {confirming && (
         <DeleteArtistDialog
-          name={name}
+          name={shown}
           pending={del.isPending}
           onPick={(mode) => del.mutate(mode)}
           onClose={() => setConfirming(false)}

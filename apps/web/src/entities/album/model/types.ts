@@ -2,6 +2,7 @@
 export interface AlbumArtist {
   id: string
   name: string | null
+  display_name: string | null // 관리자가 등록한 한글명 (없으면 name으로 표시)
   image_url: string | null
   genres: string[] | null
   spotify_url: string | null
@@ -10,6 +11,9 @@ export interface AlbumArtist {
 export interface Album {
   id: string
   name: string
+  // 한글 표시 이름 — 관리자만 수정 가능. Spotify는 유통사가 등록한 (대개 영문)
+  // 이름만 주기 때문에 한글 제목은 여기서만 나온다. null이면 name으로 표시.
+  display_name: string | null
   artists: AlbumArtist[] // every credited artist, ordered; from the album_artists join
   release_date: string | null
   year: number | null

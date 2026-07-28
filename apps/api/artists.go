@@ -11,11 +11,14 @@ import (
 )
 
 type Artist struct {
-	ID         string   `json:"id" db:"id"`
-	Name       *string  `json:"name" db:"name"`
-	ImageURL   *string  `json:"image_url" db:"image_url"`
-	Genres     []string `json:"genres" db:"genres"`
-	SpotifyURL *string  `json:"spotify_url" db:"spotify_url"`
+	ID   string  `json:"id" db:"id"`
+	Name *string `json:"name" db:"name"`
+	// 한글 표시 이름 — admin-curated, null by default. Spotify hands back only the
+	// name the label registered (usually English); the UI falls back to Name.
+	DisplayName *string  `json:"display_name" db:"display_name"`
+	ImageURL    *string  `json:"image_url" db:"image_url"`
+	Genres      []string `json:"genres" db:"genres"`
+	SpotifyURL  *string  `json:"spotify_url" db:"spotify_url"`
 	// 연관검색어 — admin-curated search keywords (e.g. Korean spellings of an
 	// English artist name). Never written by the crawler.
 	Aliases []string `json:"aliases" db:"aliases"`
@@ -26,7 +29,7 @@ type Artist struct {
 	FollowerCount int `json:"follower_count" db:"follower_count"`
 }
 
-const artistCols = "id,name,image_url,genres,spotify_url,aliases,followers"
+const artistCols = "id,name,display_name,image_url,genres,spotify_url,aliases,followers"
 
 // artistSelectCols is artistCols plus the computed follower count; every artist
 // read uses it, while artistCols alone stays valid as an INSERT column list.
@@ -38,16 +41,17 @@ func (s *server) listArtists(w http.ResponseWriter, r *http.Request) {
 	limit, offset := clampPage(r)
 	sql := "SELECT " + artistSelectCols + " FROM artists WHERE 1=1"
 	var args []any
-	// q matches the artist name OR any admin-curated alias (연관검색어), so a
-	// Korean query finds artists stored under an English name.
+	// q matches the artist name, the 한글 표시 이름, OR any admin-curated alias
+	// (연관검색어), so a Korean query finds artists stored under an English name.
 	if q := r.URL.Query().Get("q"); q != "" {
 		args = append(args, "%"+q+"%")
 		p := "$" + strconv.Itoa(len(args))
-		sql += " AND (name ILIKE " + p +
+		sql += " AND (name ILIKE " + p + " OR display_name ILIKE " + p +
 			" OR EXISTS (SELECT 1 FROM unnest(COALESCE(aliases,'{}'::text[])) AS al WHERE al ILIKE " + p + "))"
 	}
 	args = append(args, limit)
-	sql += " ORDER BY name LIMIT $" + strconv.Itoa(len(args))
+	// Sort by what the UI actually shows (한글명이 있으면 그 이름).
+	sql += " ORDER BY COALESCE(display_name, name) LIMIT $" + strconv.Itoa(len(args))
 	args = append(args, offset)
 	sql += " OFFSET $" + strconv.Itoa(len(args))
 	rows, err := s.db.Query(r.Context(), sql, args...)
@@ -90,8 +94,8 @@ func (s *server) createArtist(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, "id is required")
 		return
 	}
-	_, err := s.db.Exec(r.Context(), "INSERT INTO artists("+artistCols+") VALUES($1,$2,$3,$4,$5,$6,$7)",
-		a.ID, a.Name, a.ImageURL, a.Genres, a.SpotifyURL, normalizeAliases(a.Aliases), a.Followers)
+	_, err := s.db.Exec(r.Context(), "INSERT INTO artists("+artistCols+") VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
+		a.ID, a.Name, nilIfBlank(a.DisplayName), a.ImageURL, a.Genres, a.SpotifyURL, normalizeAliases(a.Aliases), a.Followers)
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 		writeErr(w, 409, "artist id already exists")
@@ -110,8 +114,8 @@ func (s *server) updateArtist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.ID = r.PathValue("id")
-	tag, err := s.db.Exec(r.Context(), "UPDATE artists SET name=$2,image_url=$3,genres=$4,spotify_url=$5,aliases=$6 WHERE id=$1",
-		a.ID, a.Name, a.ImageURL, a.Genres, a.SpotifyURL, normalizeAliases(a.Aliases))
+	tag, err := s.db.Exec(r.Context(), "UPDATE artists SET name=$2,display_name=$3,image_url=$4,genres=$5,spotify_url=$6,aliases=$7 WHERE id=$1",
+		a.ID, a.Name, nilIfBlank(a.DisplayName), a.ImageURL, a.Genres, a.SpotifyURL, normalizeAliases(a.Aliases))
 	if err != nil {
 		writeErr(w, 500, err.Error())
 		return
@@ -121,6 +125,41 @@ func (s *server) updateArtist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, a)
+}
+
+// nilIfBlank trims a display name; blank (or missing) means "no override" → NULL,
+// so the UI falls back to the crawler-supplied Spotify name.
+func nilIfBlank(s *string) *string {
+	if s == nil {
+		return nil
+	}
+	t := strings.TrimSpace(*s)
+	if t == "" {
+		return nil
+	}
+	return &t
+}
+
+// updateArtistDisplayName replaces only the 한글 표시 이름 (admin-only) — same
+// partial-update shape as updateArtistAliases, so crawler-owned fields survive.
+func (s *server) updateArtistDisplayName(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		DisplayName *string `json:"display_name"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	tag, err := s.db.Exec(r.Context(), "UPDATE artists SET display_name=$2 WHERE id=$1",
+		r.PathValue("id"), nilIfBlank(body.DisplayName))
+	if err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		writeErr(w, 404, "artist not found")
+		return
+	}
+	w.WriteHeader(204)
 }
 
 // normalizeAliases trims, drops empties, and dedups while keeping order.
@@ -235,6 +274,7 @@ func (s *server) deleteArtist(w http.ResponseWriter, r *http.Request) {
 				"DELETE FROM ratings WHERE album_id = ANY($1)",
 				"DELETE FROM comments WHERE album_id = ANY($1)",
 				"DELETE FROM not_hiphop_reports WHERE album_id = ANY($1)",
+				"DELETE FROM rename_requests WHERE album_id = ANY($1)",
 				"DELETE FROM album_artists WHERE album_id = ANY($1)",
 			} {
 				if _, err := tx.Exec(r.Context(), q, ids); err != nil {

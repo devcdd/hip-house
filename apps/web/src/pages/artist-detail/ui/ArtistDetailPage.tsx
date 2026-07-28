@@ -3,13 +3,15 @@ import { useArtist } from '@/entities/artist'
 import { AlbumFeed } from '@/widgets/album-feed'
 import { FollowButton } from '@/features/follow-artist'
 import { RefreshAlbumsButton } from '@/features/crawl-artist'
+import { EditDisplayNameButton } from '@/features/edit-display-name'
 import { Avatar } from '@/shared/ui/Avatar'
+import { displayName } from '@/shared/lib/displayName'
 import styles from './ArtistDetailPage.module.css'
 
 export function ArtistDetailPage() {
   const { id = '' } = useParams()
   const { data: artist, isLoading, error } = useArtist(id)
-  const name = artist?.name ?? artist?.id ?? id
+  const name = artist ? displayName(artist) : id
 
   return (
     <div className={styles.page}>
@@ -20,6 +22,15 @@ export function ArtistDetailPage() {
           <div className={styles.headerActions}>
             {artist && <FollowButton artistId={artist.id} />}
             {artist && <RefreshAlbumsButton artistId={artist.id} />}
+            {/* 관리자만 보임 — Spotify 영문명 대신 쓸 한글명 등록/해제. */}
+            {artist && (
+              <EditDisplayNameButton
+                kind="artist"
+                id={artist.id}
+                name={artist.name ?? artist.id}
+                displayName={artist.display_name}
+              />
+            )}
           </div>
         </div>
         {artist?.follower_count != null && (

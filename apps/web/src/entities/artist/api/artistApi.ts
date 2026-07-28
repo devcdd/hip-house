@@ -16,6 +16,11 @@ export function updateArtistAliases(id: string, aliases: string[]): Promise<Arti
   return apiPut<Artist>(`/artists/${encodeURIComponent(id)}/aliases`, { aliases })
 }
 
+// Admin: 한글 표시 이름만 교체. 빈 문자열이면 해제되어 Spotify 원본명으로 돌아간다.
+export function updateArtistDisplayName(id: string, displayName: string): Promise<void> {
+  return apiPut<void>(`/artists/${encodeURIComponent(id)}/display-name`, { display_name: displayName })
+}
+
 export type DeleteMode = 'soft' | 'hard'
 
 // Admin: 'soft' keeps the artist and only soft-deletes the albums they are the

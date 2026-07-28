@@ -26,16 +26,21 @@ func typeCond(t string) string {
 
 // AlbumArtist is one credited artist on an album (via the album_artists join).
 type AlbumArtist struct {
-	ID         string   `json:"id"`
-	Name       *string  `json:"name"`
-	ImageURL   *string  `json:"image_url"`
-	Genres     []string `json:"genres"`
-	SpotifyURL *string  `json:"spotify_url"`
+	ID          string   `json:"id"`
+	Name        *string  `json:"name"`
+	DisplayName *string  `json:"display_name"`
+	ImageURL    *string  `json:"image_url"`
+	Genres      []string `json:"genres"`
+	SpotifyURL  *string  `json:"spotify_url"`
 }
 
 type Album struct {
-	ID          string  `json:"id" db:"id"`
-	Name        string  `json:"name" db:"name"`
+	ID   string `json:"id" db:"id"`
+	Name string `json:"name" db:"name"`
+	// 한글 표시 이름 — admin-curated, null by default. Spotify only returns the
+	// name the label registered (usually English), so this is the only Korean
+	// title we have; the UI falls back to Name when it's null.
+	DisplayName *string `json:"display_name" db:"display_name"`
 	ReleaseDate *string `json:"release_date" db:"release_date"`
 	Year        *int    `json:"year" db:"year"`
 	AlbumType   *string `json:"album_type" db:"album_type"`
@@ -56,9 +61,12 @@ type Album struct {
 
 // albumCols: writable scalar columns on the albums table (INSERT/UPDATE).
 // Artists live in the album_artists join table, written separately in a tx.
+// display_name is deliberately absent: it's admin-curated and only ever written
+// by updateAlbumDisplayName, so a crawl or a full PUT can't wipe it.
 const albumCols = "id,name,release_date,year,album_type,total_tracks,image_url,spotify_url"
 
 const albumSelectCols = albumCols + `,
+	display_name,
 	CASE WHEN album_type='album' THEN '정규'
 	     WHEN album_type='single' AND total_tracks >= 3 THEN 'EP'
 	     WHEN album_type='single' THEN '싱글'
@@ -68,7 +76,7 @@ const albumSelectCols = albumCols + `,
 	(SELECT COUNT(*) FROM comments c WHERE c.album_id = albums.id AND c.deleted_at IS NULL)::int AS comment_count,
 	deleted_at::text AS deleted_at,
 	COALESCE((
-		SELECT json_agg(json_build_object('id', ar.id, 'name', ar.name, 'image_url', ar.image_url, 'genres', ar.genres, 'spotify_url', ar.spotify_url) ORDER BY aa.position)
+		SELECT json_agg(json_build_object('id', ar.id, 'name', ar.name, 'display_name', ar.display_name, 'image_url', ar.image_url, 'genres', ar.genres, 'spotify_url', ar.spotify_url) ORDER BY aa.position)
 		FROM album_artists aa JOIN artists ar ON ar.id = aa.artist_id
 		WHERE aa.album_id = albums.id
 	), '[]'::json) AS artists`
@@ -118,15 +126,16 @@ func buildAlbumListQuery(year *int, artistID, q string, types []string, sort str
 		args = append(args, artistID)
 		sql += " AND EXISTS (SELECT 1 FROM album_artists aa WHERE aa.album_id = albums.id AND aa.artist_id = $" + strconv.Itoa(len(args)) + ")"
 	}
-	// q matches the album name, a credited artist's name, any admin-curated
-	// alias (연관검색어) — so "블랙넛" finds albums stored under "Black Nut" —
-	// or a track name, so searching a song title surfaces its album.
+	// q matches the album name (English or the 한글 display name), a credited
+	// artist's name (both spellings too), any admin-curated alias (연관검색어) —
+	// so "블랙넛" finds albums stored under "Black Nut" — or a track name, so
+	// searching a song title surfaces its album.
 	if q != "" {
 		args = append(args, "%"+q+"%")
 		p := "$" + strconv.Itoa(len(args))
-		sql += " AND (albums.name ILIKE " + p +
+		sql += " AND (albums.name ILIKE " + p + " OR albums.display_name ILIKE " + p +
 			" OR EXISTS (SELECT 1 FROM album_artists aa JOIN artists ar ON ar.id = aa.artist_id" +
-			" WHERE aa.album_id = albums.id AND (ar.name ILIKE " + p +
+			" WHERE aa.album_id = albums.id AND (ar.name ILIKE " + p + " OR ar.display_name ILIKE " + p +
 			" OR EXISTS (SELECT 1 FROM unnest(COALESCE(ar.aliases,'{}'::text[])) AS al WHERE al ILIKE " + p + ")))" +
 			" OR EXISTS (SELECT 1 FROM tracks t WHERE t.album_id = albums.id AND t.name ILIKE " + p + "))"
 	}
@@ -334,6 +343,29 @@ func (s *server) updateAlbum(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, a)
+}
+
+// updateAlbumDisplayName replaces only the 한글 표시 이름 (admin-only). Crawler-owned
+// fields are untouched, and a blank value clears the override so the UI falls back
+// to Spotify's name.
+func (s *server) updateAlbumDisplayName(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		DisplayName *string `json:"display_name"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	tag, err := s.db.Exec(r.Context(), "UPDATE albums SET display_name=$2 WHERE id=$1",
+		r.PathValue("id"), nilIfBlank(body.DisplayName))
+	if err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		writeErr(w, 404, "album not found")
+		return
+	}
+	w.WriteHeader(204)
 }
 
 // deleteAlbum soft-deletes: sets deleted_at instead of removing the row.

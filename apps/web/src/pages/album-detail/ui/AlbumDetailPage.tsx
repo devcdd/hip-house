@@ -8,8 +8,10 @@ import { FavoriteButton, useFavoriteIds } from '@/features/favorite-album'
 import { RatingControl, StarRating, useRatingMap } from '@/features/rate-album'
 import { CommentSection } from '@/features/album-comments'
 import { ReportButton } from '@/features/report-album'
+import { EditDisplayNameButton } from '@/features/edit-display-name'
 import { startKakaoLogin } from '@/features/auth'
 import { apiDelete, apiPost } from '@/shared/api/client'
+import { displayName } from '@/shared/lib/displayName'
 import { AlbumDetailSkeleton } from './AlbumDetailSkeleton'
 import styles from './AlbumDetailPage.module.css'
 
@@ -47,22 +49,22 @@ export function AlbumDetailPage() {
         <div className={styles.content}>
           <div className={styles.art}>
             {album.image_url ? (
-              <img src={album.image_url} alt={album.name} />
+              <img src={album.image_url} alt={displayName(album)} />
             ) : (
-              <div className={styles.placeholder}>{album.name.slice(0, 1)}</div>
+              <div className={styles.placeholder}>{displayName(album).slice(0, 1)}</div>
             )}
           </div>
 
           <div className={styles.info}>
             <h1 className={styles.name}>
-              {album.name}
+              {displayName(album)}
               {album.deleted_at && <span className={styles.deletedBadge}>삭제됨</span>}
             </h1>
             <p className={styles.artist}>
               {album.artists.map((a, i) => (
                 <Fragment key={a.id}>
                   {i > 0 && ', '}
-                  <Link to={`/artists/${encodeURIComponent(a.id)}`}>{a.name ?? a.id}</Link>
+                  <Link to={`/artists/${encodeURIComponent(a.id)}`}>{displayName(a)}</Link>
                 </Fragment>
               ))}
             </p>
@@ -97,6 +99,8 @@ export function AlbumDetailPage() {
                   로그인하고 즐겨찾기
                 </button>
               )}
+              {/* 관리자만 보임 — Spotify가 주는 영문명 대신 쓸 한글명 등록/해제. */}
+              <EditDisplayNameButton kind="album" id={album.id} name={album.name} displayName={album.display_name} />
               {isAdmin && (
                 <button
                   type="button"
@@ -112,7 +116,8 @@ export function AlbumDetailPage() {
 
             {/* 별도 줄: 주요 액션보다 눈에 덜 띄게 */}
             <div className={styles.report}>
-              <ReportButton albumId={album.id} />
+              <ReportButton albumId={album.id} kind="rename" />
+              <ReportButton albumId={album.id} kind="not-hiphop" />
             </div>
           </div>
         </div>
