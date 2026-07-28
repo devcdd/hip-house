@@ -250,6 +250,75 @@ func (s *server) ensureAuthSchema(ctx context.Context) error {
 		ALTER TABLE IF EXISTS artists ADD COLUMN IF NOT EXISTS display_name TEXT;
 		ALTER TABLE IF EXISTS albums ADD COLUMN IF NOT EXISTS display_name TEXT;
 
+		-- Denormalized aggregates on albums. The list query sorts by these, so as
+		-- correlated subqueries they were computed for every matching row before
+		-- LIMIT; as columns the sort reads them straight off the row (and the index
+		-- below). rating_sum is in half-stars, like ratings.score.
+		ALTER TABLE IF EXISTS albums ADD COLUMN IF NOT EXISTS rating_count INTEGER NOT NULL DEFAULT 0;
+		ALTER TABLE IF EXISTS albums ADD COLUMN IF NOT EXISTS rating_sum INTEGER NOT NULL DEFAULT 0;
+		ALTER TABLE IF EXISTS albums ADD COLUMN IF NOT EXISTS comment_count INTEGER NOT NULL DEFAULT 0;
+		CREATE INDEX IF NOT EXISTS idx_albums_popular ON albums (rating_count DESC, id);
+
+		-- Counters are maintained by triggers, NOT by the handlers: ratings/comments
+		-- also disappear through paths the API never sees — the users FK cascade and
+		-- the bulk deletes in deleteArtist(mode=hard). A trigger catches all of them.
+		CREATE OR REPLACE FUNCTION albums_rating_counters() RETURNS trigger AS $fn$
+		BEGIN
+			IF TG_OP = 'INSERT' THEN
+				UPDATE albums SET rating_count = rating_count + 1, rating_sum = rating_sum + NEW.score
+				 WHERE id = NEW.album_id;
+			ELSIF TG_OP = 'UPDATE' THEN -- re-rating: the row stays, only the score moves
+				UPDATE albums SET rating_sum = rating_sum - OLD.score + NEW.score
+				 WHERE id = NEW.album_id;
+			ELSE
+				UPDATE albums SET rating_count = rating_count - 1, rating_sum = rating_sum - OLD.score
+				 WHERE id = OLD.album_id;
+			END IF;
+			RETURN NULL;
+		END $fn$ LANGUAGE plpgsql;
+
+		-- Comments are soft-deleted, so "removed" is an UPDATE of deleted_at.
+		CREATE OR REPLACE FUNCTION albums_comment_counters() RETURNS trigger AS $fn$
+		BEGIN
+			IF TG_OP = 'INSERT' THEN
+				IF NEW.deleted_at IS NULL THEN
+					UPDATE albums SET comment_count = comment_count + 1 WHERE id = NEW.album_id;
+				END IF;
+			ELSIF TG_OP = 'UPDATE' THEN
+				IF OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL THEN
+					UPDATE albums SET comment_count = comment_count - 1 WHERE id = NEW.album_id;
+				ELSIF OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS NULL THEN
+					UPDATE albums SET comment_count = comment_count + 1 WHERE id = NEW.album_id;
+				END IF;
+			ELSIF OLD.deleted_at IS NULL THEN
+				UPDATE albums SET comment_count = comment_count - 1 WHERE id = OLD.album_id;
+			END IF;
+			RETURN NULL;
+		END $fn$ LANGUAGE plpgsql;
+
+		CREATE OR REPLACE TRIGGER trg_ratings_counters
+			AFTER INSERT OR UPDATE OF score OR DELETE ON ratings
+			FOR EACH ROW EXECUTE FUNCTION albums_rating_counters();
+		CREATE OR REPLACE TRIGGER trg_comments_counters
+			AFTER INSERT OR UPDATE OF deleted_at OR DELETE ON comments
+			FOR EACH ROW EXECUTE FUNCTION albums_comment_counters();
+
+		-- Reconcile on boot: backfills the columns the first time and self-heals any
+		-- drift afterwards (a trigger added mid-flight, a manual SQL fix). Touches
+		-- only rows that are actually wrong, so a healthy DB writes nothing.
+		-- ponytail: full albums scan per boot — move behind a version flag if the
+		-- table ever grows past "starts in well under a second".
+		UPDATE albums a SET rating_count = t.rc, rating_sum = t.rs, comment_count = t.cc
+		FROM (
+			SELECT al.id,
+			       (SELECT count(*) FROM ratings r WHERE r.album_id = al.id)::int AS rc,
+			       (SELECT COALESCE(sum(r.score), 0) FROM ratings r WHERE r.album_id = al.id)::int AS rs,
+			       (SELECT count(*) FROM comments c WHERE c.album_id = al.id AND c.deleted_at IS NULL)::int AS cc
+			FROM albums al
+		) t
+		WHERE a.id = t.id
+		  AND (a.rating_count, a.rating_sum, a.comment_count) IS DISTINCT FROM (t.rc, t.rs, t.cc);
+
 		-- Backfill the legacy single-artist column into the join table. We DON'T drop
 		-- the old artist_id/artist_name columns: artist_name still holds the only record
 		-- of featured artists (they never had IDs), so keeping it avoids data loss and

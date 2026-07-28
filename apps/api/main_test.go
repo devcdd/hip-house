@@ -56,6 +56,18 @@ func TestBuildAlbumListQuery(t *testing.T) {
 	if !strings.Contains(sql, "albums.deleted_at IS NULL") {
 		t.Errorf("expected deleted_at filter: %s", sql)
 	}
+	// Two-phase: filters/sort/LIMIT run on an id-only inner query, and the outer
+	// one (the expensive artists json_agg) sorts the surviving page again.
+	if !strings.Contains(sql, "WHERE id IN (SELECT id FROM albums") {
+		t.Errorf("expected the id-only inner query: %s", sql)
+	}
+	if strings.Count(sql, "ORDER BY total_tracks DESC") != 2 {
+		t.Errorf("both phases must carry the same ORDER BY: %s", sql)
+	}
+	// The aggregates are plain columns now — no per-row subqueries left.
+	if strings.Contains(sql, "FROM ratings") || strings.Contains(sql, "FROM comments") {
+		t.Errorf("rating/comment aggregates should come from albums columns: %s", sql)
+	}
 
 	// no filters: limit/offset shift to $1/$2 (the bug this guards against), default sort by year.
 	sql, args = buildAlbumListQuery(nil, "", "", nil, "", "include", 50, 0)
@@ -85,8 +97,8 @@ func TestOrderClause(t *testing.T) {
 	// Both rating sorts must still fall back to the date order so unrated albums
 	// (rating_count 0 / rating_avg NULL) stay newest-first at the bottom.
 	for _, tc := range []struct{ sort, wantPrefix string }{
-		{"rating", "rating_avg DESC NULLS LAST, rating_count DESC, "},
-		{"popular", "rating_count DESC, rating_avg DESC NULLS LAST, "},
+		{"rating", ratingAvgExpr + " DESC NULLS LAST, rating_count DESC, "},
+		{"popular", "rating_count DESC, " + ratingAvgExpr + " DESC NULLS LAST, "},
 	} {
 		got := orderClause(tc.sort)
 		if !strings.HasPrefix(got, tc.wantPrefix) {
@@ -99,10 +111,11 @@ func TestOrderClause(t *testing.T) {
 	if orderClause("nonsense") != byDate {
 		t.Errorf("unknown sort should fall back to date order")
 	}
-	// The aliases the rating sorts reference must exist in the SELECT list.
-	for _, alias := range []string{"AS rating_avg", "AS rating_count"} {
-		if !strings.Contains(albumSelectCols, alias) {
-			t.Errorf("albumSelectCols missing %q", alias)
+	// The columns the sorts (and the JSON response) rely on must be selected —
+	// rating_avg is derived from the two stored counters, the rest are raw.
+	for _, col := range []string{ratingAvgExpr + " AS rating_avg", "rating_count", "comment_count"} {
+		if !strings.Contains(albumSelectCols, col) {
+			t.Errorf("albumSelectCols missing %q", col)
 		}
 	}
 }

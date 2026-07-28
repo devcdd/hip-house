@@ -65,15 +65,20 @@ type Album struct {
 // by updateAlbumDisplayName, so a crawl or a full PUT can't wipe it.
 const albumCols = "id,name,release_date,year,album_type,total_tracks,image_url,spotify_url"
 
+// ratingAvgExpr turns the stored half-star sum into stars (0..5), NULL when the
+// album has no ratings. Written out (not an alias) so ORDER BY can use it in the
+// id-only inner query too, where the select list isn't available.
+const ratingAvgExpr = "(rating_sum::float / NULLIF(rating_count, 0) / 2)"
+
 const albumSelectCols = albumCols + `,
 	display_name,
 	CASE WHEN album_type='album' THEN '정규'
 	     WHEN album_type='single' AND total_tracks >= 3 THEN 'EP'
 	     WHEN album_type='single' THEN '싱글'
 	     ELSE album_type END AS type_label,
-	(SELECT AVG(score)::float / 2 FROM ratings rt WHERE rt.album_id = albums.id) AS rating_avg,
-	(SELECT COUNT(*) FROM ratings rt WHERE rt.album_id = albums.id)::int AS rating_count,
-	(SELECT COUNT(*) FROM comments c WHERE c.album_id = albums.id AND c.deleted_at IS NULL)::int AS comment_count,
+	` + ratingAvgExpr + ` AS rating_avg,
+	rating_count,
+	comment_count,
 	deleted_at::text AS deleted_at,
 	COALESCE((
 		SELECT json_agg(json_build_object('id', ar.id, 'name', ar.name, 'display_name', ar.display_name, 'image_url', ar.image_url, 'genres', ar.genres, 'spotify_url', ar.spotify_url) ORDER BY aa.position)
@@ -87,18 +92,19 @@ const albumSelectCols = albumCols + `,
 const byDate = "release_date DESC NULLS LAST, year DESC NULLS LAST, name"
 
 // orderClause maps a sort key to a whitelisted ORDER BY (never interpolate raw
-// input). rating_avg / rating_count are output aliases from albumSelectCols.
+// input). Every term is a plain albums column or ratingAvgExpr — no output
+// aliases — so the same clause works in the inner id query and the outer one.
 func orderClause(sort string) string {
 	switch sort {
 	case "tracks":
 		return "total_tracks DESC NULLS LAST, name"
 	case "rating":
 		// Highest average first; more raters breaks ties between equal averages.
-		return "rating_avg DESC NULLS LAST, rating_count DESC, " + byDate
+		return ratingAvgExpr + " DESC NULLS LAST, rating_count DESC, " + byDate
 	case "popular":
 		// Most-rated first, then highest average. rating_count is 0 (never null)
 		// for unrated albums, so they land at the bottom ordered by date.
-		return "rating_count DESC, rating_avg DESC NULLS LAST, " + byDate
+		return "rating_count DESC, " + ratingAvgExpr + " DESC NULLS LAST, " + byDate
 	default: // "recent" and anything unknown
 		return byDate
 	}
@@ -107,9 +113,14 @@ func orderClause(sort string) string {
 // buildAlbumListQuery is pure so it can be unit-tested without a DB.
 // deleted selects soft-delete visibility: "hide" (public), "include" (admin
 // browsing — deleted rows mixed in, dimmed client-side), "only" (admin 삭제 목록).
+//
+// Two phases on purpose: the inner query filters/sorts/paginates on plain albums
+// columns and returns ids only, the outer one runs the artists json_agg for the
+// ≤limit rows that survived. Searching a common word used to aggregate every
+// match before LIMIT threw them away.
 func buildAlbumListQuery(year *int, artistID, q string, types []string, sort string, deleted string, limit, offset int) (string, []any) {
-	sql := "SELECT " + albumSelectCols + " FROM albums WHERE 1=1"
-	// Qualified with albums. — the comment_count subquery has its own deleted_at.
+	sql := "SELECT id FROM albums WHERE 1=1"
+	// Qualified with albums. — the EXISTS subqueries have their own columns.
 	switch deleted {
 	case "include": // no filter
 	case "only":
@@ -149,12 +160,15 @@ func buildAlbumListQuery(year *int, artistID, q string, types []string, sort str
 	if len(conds) > 0 {
 		sql += " AND (" + strings.Join(conds, " OR ") + ")"
 	}
-	sql += " ORDER BY " + orderClause(sort)
+	order := orderClause(sort)
+	sql += " ORDER BY " + order
 	args = append(args, limit)
 	sql += " LIMIT $" + strconv.Itoa(len(args))
 	args = append(args, offset)
 	sql += " OFFSET $" + strconv.Itoa(len(args))
-	return sql, args
+	// IN (...) doesn't preserve the inner order, so the outer query sorts again —
+	// over at most `limit` rows.
+	return "SELECT " + albumSelectCols + " FROM albums WHERE id IN (" + sql + ") ORDER BY " + order, args
 }
 
 func (a *Album) validate() string {
