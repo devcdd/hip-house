@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { RefreshCw } from 'lucide-react'
+import { KeyRound, RefreshCw } from 'lucide-react'
 import { useAuth } from '@/entities/session'
 import { fetchSpotifyKeys } from '@/features/crawl-artist/api/crawlApi'
 import { useCrawlArtist } from '@/features/crawl-artist/model/useCrawlArtist'
+import { PopoverSelect } from '@/shared/ui/PopoverSelect'
 import styles from './RefreshAlbumsButton.module.css'
 
 // Admin-only shortcut: same crawl as the admin 크롤링 탭, but right where the
@@ -26,18 +27,13 @@ export function RefreshAlbumsButton({ artistId }: { artistId: string }) {
   return (
     <div className={styles.wrap}>
       {keys.length > 1 && (
-        <select
-          className={styles.key}
+        // 정렬 필터와 같은 팝오버 셀렉트 — 브라우저 기본 드롭다운과 섞이지 않게.
+        <PopoverSelect
           value={key}
-          aria-label="Spotify API 키 선택"
-          onChange={(e) => setPicked(e.target.value)}
-        >
-          {keys.map((k) => (
-            <option key={k} value={k}>
-              {k.toUpperCase()}
-            </option>
-          ))}
-        </select>
+          onChange={setPicked}
+          ariaLabel="Spotify API 키"
+          options={keys.map((k) => ({ key: k, label: k.toUpperCase(), icon: KeyRound }))}
+        />
       )}
       <button
         type="button"

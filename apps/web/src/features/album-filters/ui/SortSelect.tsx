@@ -1,7 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Check, ChevronDown, Clock, Flame, ListMusic, Star } from 'lucide-react'
+import { Clock, Flame, ListMusic, Star } from 'lucide-react'
+import { PopoverSelect } from '@/shared/ui/PopoverSelect'
 import { SORT_OPTIONS, type SortKey } from '../model/types'
-import styles from './SortSelect.module.css'
 
 interface Props {
   value: SortKey
@@ -16,87 +15,19 @@ const ICONS: Record<SortKey, typeof Clock> = {
   tracks: ListMusic,
 }
 
-// Custom popover instead of <select> so each option can carry an icon + hint —
-// "인기순" vs "별점 높은 순" needs the one-line explanation to be distinguishable.
+// 옵션마다 아이콘 + 한 줄 설명이 붙어야 해서 네이티브 <select>를 안 쓴다 —
+// "인기순"과 "별점 높은 순"은 설명이 없으면 구분이 안 된다.
 export function SortSelect({ value, onChange, disabledKeys = [] }: Props) {
-  const [open, setOpen] = useState(false)
-  const [alignLeft, setAlignLeft] = useState(false)
-  const root = useRef<HTMLDivElement>(null)
-  const current = SORT_OPTIONS.find((o) => o.key === value) ?? SORT_OPTIONS[0]
-  const CurrentIcon = ICONS[current.key]
-
-  // The trigger sits right in the wide layout (space-between) but wraps to the
-  // left when narrow. Anchor the menu toward the viewport center so it never
-  // spills off either edge. useLayoutEffect flips it before paint (no flash).
-  useLayoutEffect(() => {
-    if (!open || !root.current) return
-    const r = root.current.getBoundingClientRect()
-    setAlignLeft(r.left < window.innerWidth / 2)
-  }, [open])
-
-  useEffect(() => {
-    if (!open) return
-    const onDown = (e: MouseEvent) => {
-      if (!root.current?.contains(e.target as Node)) setOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
-    document.addEventListener('mousedown', onDown)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDown)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open])
-
   return (
-    <div className={styles.root} ref={root}>
-      <button
-        type="button"
-        className={styles.trigger}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={`정렬: ${current.label}`}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <CurrentIcon size={15} strokeWidth={2.2} className={styles.triggerIcon} />
-        {current.label}
-        <ChevronDown size={15} strokeWidth={2.4} className={open ? styles.chevronOpen : styles.chevron} />
-      </button>
-
-      {open && (
-        <ul
-          className={alignLeft ? `${styles.menu} ${styles.menuLeft}` : styles.menu}
-          role="listbox"
-          aria-label="정렬"
-        >
-          {SORT_OPTIONS.map((o) => {
-            const Icon = ICONS[o.key]
-            const selected = o.key === value
-            return (
-              <li key={o.key}>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={selected}
-                  disabled={disabledKeys.includes(o.key)}
-                  className={selected ? `${styles.option} ${styles.selected}` : styles.option}
-                  onClick={() => {
-                    onChange(o.key)
-                    setOpen(false)
-                  }}
-                >
-                  <Icon size={16} strokeWidth={2.1} className={styles.optionIcon} />
-                  <span className={styles.text}>
-                    <span className={styles.label}>{o.label}</span>
-                    <span className={styles.hint}>{o.hint}</span>
-                  </span>
-                  {selected && <Check size={15} strokeWidth={2.6} className={styles.check} />}
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      )}
-    </div>
+    <PopoverSelect
+      value={value}
+      onChange={onChange}
+      ariaLabel="정렬"
+      options={SORT_OPTIONS.map((o) => ({
+        ...o,
+        icon: ICONS[o.key],
+        disabled: disabledKeys.includes(o.key),
+      }))}
+    />
   )
 }

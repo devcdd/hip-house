@@ -4,18 +4,6 @@
   gap: 6px;
 }
 
-/* Only shown when the server has more than one credential pair configured. */
-.key {
-  padding: 8px 10px;
-  border: none;
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
 .btn {
   display: inline-flex;
   align-items: center;
