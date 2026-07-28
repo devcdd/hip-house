@@ -142,6 +142,26 @@
   gap: 2px;
 }
 
+/* 관리자 전용 도구 묶음 — 일반 사용자에겐 렌더되지 않는다. */
+.adminBar {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+}
+
+.adminTag {
+  flex: none;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
 .loginHint {
   padding: 9px 16px;
   border: none;
@@ -216,4 +236,27 @@
 .state {
   color: var(--muted);
   padding: 24px 0;
+}
+
+/* 좁은 화면: 액션들이 한 줄에 다 안 들어간다 — 버튼을 늘려 줄 단위로 채운다. */
+@media (max-width: 600px) {
+  .page {
+    padding: 20px 16px 72px;
+  }
+
+  /* 버튼만 늘린다 — RatingControl이 함께 렌더하는 <dialog>는 건드리지 않게. */
+  .actions > button,
+  .adminBar > button,
+  .adminBar > form {
+    flex: 1 1 132px;
+    justify-content: center;
+  }
+
+  .adminTag {
+    flex-basis: 100%;
+  }
+
+  .embed {
+    height: 380px;
+  }
 }

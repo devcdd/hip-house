@@ -99,9 +99,13 @@ export function AlbumDetailPage() {
                   로그인하고 즐겨찾기
                 </button>
               )}
-              {/* 관리자만 보임 — Spotify가 주는 영문명 대신 쓸 한글명 등록/해제. */}
-              <EditDisplayNameButton kind="album" id={album.id} name={album.name} displayName={album.display_name} />
-              {isAdmin && (
+            </div>
+
+            {/* 관리자 도구는 별도 줄 — 일반 액션과 섞이면 좁은 화면에서 줄이 터진다. */}
+            {isAdmin && (
+              <div className={styles.adminBar}>
+                <span className={styles.adminTag}>관리자</span>
+                <EditDisplayNameButton kind="album" id={album.id} name={album.name} displayName={album.display_name} />
                 <button
                   type="button"
                   className={album.deleted_at ? styles.restore : styles.delete}
@@ -111,8 +115,8 @@ export function AlbumDetailPage() {
                   {album.deleted_at ? <RotateCcw size={15} strokeWidth={2.4} /> : <Trash2 size={15} strokeWidth={2.4} />}
                   {album.deleted_at ? '복구' : '삭제'}
                 </button>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* 별도 줄: 주요 액션보다 눈에 덜 띄게 */}
             <div className={styles.report}>

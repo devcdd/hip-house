@@ -69,3 +69,15 @@
   color: #e5484d;
   font-size: 0.8rem;
 }
+
+/* 좁은 화면: 고정폭 입력칸이 줄을 밀어낸다 — 남는 폭을 그대로 쓰게. */
+@media (max-width: 600px) {
+  .form {
+    width: 100%;
+  }
+
+  .input {
+    flex: 1 1 120px;
+    width: auto;
+  }
+}
