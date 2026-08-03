@@ -1,61 +1,54 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { ChevronLeft } from 'lucide-react'
+import { useState } from 'react'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth, updateNickname } from '@/entities/session'
 import { useToast } from '@/shared/ui/toast'
-import { AuthGate } from './AuthGate'
-import styles from './MyPage.module.css'
+import styles from './WelcomePage.module.css'
 
-export function NicknamePage() {
-  return (
-    <AuthGate>
-      <Editor />
-    </AuthGate>
-  )
-}
-
-function Editor() {
-  const { user } = useAuth()
+// /welcome — 첫 로그인 온보딩. 카카오가 준 이름으로 인사하고 닉네임을 받는다.
+// 닉네임을 저장하지 않고 나가면 nickname_set이 false로 남아 다음 로그인 때 다시 온다.
+export function WelcomePage() {
+  const { user, isAuthed, isLoading } = useAuth()
   const qc = useQueryClient()
   const toast = useToast()
+  const navigate = useNavigate()
   const [draft, setDraft] = useState('')
-
-  // Seed once the session resolves (and if it changes elsewhere).
-  useEffect(() => {
-    if (user?.nickname != null) setDraft(user.nickname)
-  }, [user?.nickname])
 
   const save = useMutation({
     mutationFn: updateNickname,
     onSuccess: (u) => {
       qc.setQueryData(['me'], u)
-      toast('닉네임을 바꿨습니다')
+      navigate('/', { replace: true })
     },
     // 409(중복)면 서버 문구를 그대로 보여준다.
-    onError: (e: Error) => toast(e.message || '닉네임 변경에 실패했습니다', 'error'),
+    onError: (e: Error) => toast(e.message || '닉네임 저장에 실패했습니다', 'error'),
   })
 
+  if (isLoading) return <div className={styles.page} />
+  if (!isAuthed) return <Navigate to="/" replace />
+  if (user?.nickname_set) return <Navigate to="/" replace />
+
   const trimmed = draft.trim()
-  const canSave = trimmed !== '' && trimmed !== user?.nickname && !save.isPending
+  const canSave = trimmed !== '' && !save.isPending
 
   return (
     <div className={styles.page}>
-      <Link to="/me" className={styles.back}>
-        <ChevronLeft size={16} aria-hidden />
-        마이페이지
-      </Link>
-      <h1 className={styles.title}>닉네임 수정</h1>
+      <h1 className={styles.greeting}>
+        {user?.nickname ? `안녕하세요, ${user.nickname}님.` : '안녕하세요.'}
+      </h1>
+      <p className={styles.lead}>힙하우스에서 쓸 닉네임을 정해주세요.</p>
       <section className={styles.card}>
         <label className={styles.label} htmlFor="nickname">
           닉네임
         </label>
-        <div className={styles.nickRow}>
+        <div className={styles.row}>
           <input
             id="nickname"
             className={styles.input}
             value={draft}
             maxLength={20}
+            autoFocus
+            placeholder={user?.nickname || '닉네임'}
             disabled={save.isPending}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
@@ -69,7 +62,7 @@ function Editor() {
             disabled={!canSave}
             onClick={() => save.mutate(trimmed)}
           >
-            {save.isPending ? '저장 중…' : '저장'}
+            {save.isPending ? '저장 중…' : '시작하기'}
           </button>
         </div>
       </section>
